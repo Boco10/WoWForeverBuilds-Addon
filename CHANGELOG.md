@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+
+- The quest panel is now called **wowforeverbuilds - Dungeon Quest helper**, and its button on the group finder reads **Quest helper**.
+- The XP column is marked with an asterisk and the panel says the figures are inaccurate: they come from earlier versions of the game, and real WoW Forever values will replace them.
+
 ## 1.3.0 — first public release
 
 Everything the addon does today, released together.

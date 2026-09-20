@@ -249,6 +249,7 @@ local function detailLines(quest)
   if objectives then lines[#lines + 1] = objectives end
   if quest.turnIn then lines[#lines + 1] = GOLD .. "Hand in:|r " .. quest.turnIn end
   lines[#lines + 1] = GREY .. ("Pick up from level %d · quest level %d"):format(quest.req or quest.level, quest.level) .. "|r"
+  if quest.xp then lines[#lines + 1] = GREY .. "Reward: " .. groupDigits(quest.xp) .. " XP (estimate from earlier game data)|r" end
 
   local chain = chainOf(quest)
   if chain or quest.pre then
@@ -692,7 +693,7 @@ local function build()
   panel:SetScript("OnDragStop", panel.StopMovingOrSizing)
   panel:SetFrameStrata("HIGH")
   panel:Hide()
-  if panel.TitleText then panel.TitleText:SetText("Dungeon quests") end
+  if panel.TitleText then panel.TitleText:SetText("wowforeverbuilds - Dungeon Quest helper") end
 
   -- Header: zone, then the fight facts, then your progress. Fixed rows, so nothing can overlap.
   panel.place = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
@@ -713,9 +714,15 @@ local function build()
   hint:SetPoint("TOPLEFT", 16, -110)
   hint:SetText("Click a quest for the full chain")
 
+  local xpNote = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  xpNote:SetPoint("TOPLEFT", 16, -124)
+  xpNote:SetWidth(PANEL_WIDTH - 32)
+  xpNote:SetJustifyH("LEFT")
+  xpNote:SetText(ORANGE .. "*XP is inaccurate:|r it comes from earlier versions of the game. Real WoW Forever values are being collected and will replace it.")
+
   local function heading(x, width, label, justify)
     local text = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    text:SetPoint("TOPLEFT", 14 + x, -128)
+    text:SetPoint("TOPLEFT", 14 + x, -146)
     text:SetWidth(width)
     text:SetJustifyH(justify or "LEFT")
     text:SetText(GREY .. label .. "|r")
@@ -724,18 +731,18 @@ local function build()
   heading(COL_X.quest, COL_QUEST, "Quest")
   heading(COL_X.where, COL_WHERE, "Pick up at")
   heading(COL_X.level, COL_LEVEL, "Pick-up lvl", "CENTER")
-  heading(COL_X.xp, COL_XP, "XP", "RIGHT")
+  heading(COL_X.xp, COL_XP, "XP*", "RIGHT")
   heading(COL_X.share, COL_SHARE, "Sharing", "CENTER")
   heading(COL_X.status, COL_STATUS, "Status", "RIGHT")
 
   local rule = panel:CreateTexture(nil, "ARTWORK")
   rule:SetColorTexture(1, 1, 1, 0.08)
-  rule:SetPoint("TOPLEFT", 14, -142)
-  rule:SetPoint("TOPRIGHT", -30, -142)
+  rule:SetPoint("TOPLEFT", 14, -160)
+  rule:SetPoint("TOPRIGHT", -30, -160)
   rule:SetHeight(1)
 
   local scroll = CreateFrame("ScrollFrame", "WoWForeverBuildsQuestScroll", panel, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 14, -148)
+  scroll:SetPoint("TOPLEFT", 14, -166)
   scroll:SetPoint("BOTTOMRIGHT", -32, 14)
   panel.content = CreateFrame("Frame", nil, scroll)
   panel.content:SetSize(ROW_WIDTH, 1)
@@ -851,10 +858,10 @@ local announced = false
 local function updateToggleButton()
   if toggleButton and toggleButton:IsShown() and not announced then
     announced = true
-    DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r dungeon quests: use the |cffffffffDungeon quests|r button on the group finder, or type |cffffffff/wfb quests|r.")
+    DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r Dungeon Quest helper: use the |cffffffffQuest helper|r button on the group finder, or type |cffffffff/wfb quests|r.")
   end
   if not toggleButton or not toggleButton:IsShown() then return end
-  toggleButton:SetText(panel and panel:IsShown() and "Hide quests" or "Dungeon quests")
+  toggleButton:SetText(panel and panel:IsShown() and "Hide helper" or "Quest helper")
 end
 
 -- Watching beats hooking here: the finder hides and shows its inner frames when you change tabs, so a

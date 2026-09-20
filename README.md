@@ -15,8 +15,8 @@ Nothing is sent anywhere. The addon reads your own character and the quest log, 
 
 `/wfb guide list` lists the guides for your class, `/wfb guide 3` picks one, `/wfb guide off` turns it off.
 
-### Dungeon quests beside the group finder
-Open the group finder and a panel opens next to it, with a **Dungeon quests** button above the window to show and hide it.
+### Dungeon Quest helper beside the group finder
+Open the group finder and the **wowforeverbuilds - Dungeon Quest helper** panel opens next to it, with a **Quest helper** button above the window to show and hide it.
 
 - Follows what you do: queue for a dungeon, tick one in the finder or walk into one, and the panel switches to it.
 - Columns for the quest, where you pick it up, the level you can pick it up at, its experience reward, whether it can be shared, and your progress.
@@ -25,7 +25,7 @@ Open the group finder and a panel opens next to it, with a **Dungeon quests** bu
 - Steps that happen inside the dungeon are marked: given inside, drops inside, hand in inside, do inside, or at the entrance.
 - Click a quest for the whole chain: where to pick it up, what it asks for, who takes it, and every step with your progress.
 - Questlines that open a dungeon chain are listed above it, and your quest log marks those quests with `[D]` or `[D>]`.
-- Running totals: what the quests in your log are worth, what the dungeon still owes you, and the full total.
+- Running totals: what the quests in your log are worth, what the dungeon still owes you, and the full total. Experience figures come from earlier versions of the game and are marked as estimates until real WoW Forever values are collected.
 
 `/wfb quests` opens the panel from chat.
 
