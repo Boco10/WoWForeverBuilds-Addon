@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+- Registered on CurseForge, so releases upload there as well as to GitHub.
+
 ## 1.3.1
 
 - The quest panel is now called **wowforeverbuilds - Dungeon Quest helper**, and its button on the group finder reads **Quest helper**.
