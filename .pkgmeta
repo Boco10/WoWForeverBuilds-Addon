@@ -1,0 +1,8 @@
+package-as: WoWForeverBuilds
+
+enable-nolib-creation: no
+
+ignore:
+  - README.md
+  - CHANGELOG.md
+  - .github
