@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.4
+
+- Quest data refreshed from the beta: the panel now knows 66 dungeon quests instead of 56.
+- New in the panel: the four Stormwind Stockade quests (What Comes Around..., Crime and Punishment, Quell the Uprising, The Color of Blood), both Allegiance to the Old Gods steps in Blackfathom Deeps, A Fine Mess and Gnomer-gooooone! in Gnomeregan, Willix the Importer in Razorfen Kraul, and the second version of The Glowing Shard for Wailing Caverns.
+- Chain information filled in for The Unsent Letter, The Stockade Riots and Chief Engineer Scooty, so their prerequisites and follow-ups now show.
+
 ## 1.3.3
 
 - Built for WoW Forever only: the addon now declares game version 1.60.1 and no longer lists Classic Era 1.15.7.
