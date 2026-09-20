@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.5
+
+- Fixed the Lua error that appeared every time you accepted a quest ("QuestLogTags.lua:154: attempt to call a nil value"). Accepting a quest now simply re-marks the dungeon quests in the log.
+
 ## 1.3.4
 
 - Quest data refreshed from the beta: the panel now knows 66 dungeon quests instead of 56.

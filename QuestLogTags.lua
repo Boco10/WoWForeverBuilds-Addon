@@ -147,11 +147,10 @@ driver:RegisterEvent("PLAYER_LOGIN")
 driver:RegisterEvent("ADDON_LOADED")
 driver:RegisterEvent("QUEST_ACCEPTED")
 driver:RegisterEvent("QUEST_LOG_UPDATE")
-driver:SetScript("OnEvent", function(_, event, arg1, arg2)
+driver:SetScript("OnEvent", function(_, event)
   if event == "QUEST_ACCEPTED" then
-    -- Classic passes the log index first, newer clients the quest id.
-    local questID = arg2 or arg1
-    if type(questID) == "number" then onQuestAccepted(questID) end
+    -- The new quest lands in the log, so its title needs the prefix too.
+    markVisibleTitles()
   elseif event == "QUEST_LOG_UPDATE" then
     hookQuestLog()
     markVisibleTitles()
