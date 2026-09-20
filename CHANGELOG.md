@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3
+
+- Built for WoW Forever only: the addon now declares game version 1.60.1 and no longer lists Classic Era 1.15.7.
+
 ## 1.3.2
 
 - Registered on CurseForge, so releases upload there as well as to GitHub.
