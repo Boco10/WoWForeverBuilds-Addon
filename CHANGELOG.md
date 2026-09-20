@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+- The quest panel now covers every dungeon on the chart up to level 60: Uldaman, Zul'Farrak, Maraudon, Sunken Temple, Blackrock Depths, Lower Blackrock Spire, all three Dire Maul wings, Scholomance, both sides of Stratholme, Razorfen Downs and the four Scarlet Monastery wings. 27 dungeons and 326 quests, up from 10 and 66.
+- The beta has not shown those instances yet, so their lists come from the Classic quest database and the panel says so: the dungeon line reads "Classic list, not seen on the beta yet". Where the beta covers a dungeon only partly — Gnomeregan, Razorfen Kraul, the Stockade, Blackfathom Deeps — the filled-in quests carry a "from the Classic list" tag of their own.
+- Class-only quests, such as the Dire Maul librams and the warlock and paladin dungeon quests, are tagged with the class that can take them.
+
 ## 1.3.5
 
 - Fixed the Lua error that appeared every time you accepted a quest ("QuestLogTags.lua:154: attempt to call a nil value"). Accepting a quest now simply re-marks the dungeon quests in the log.

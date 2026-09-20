@@ -449,6 +449,8 @@ refresh = function()
   local facts = { ("Players %d-%d"):format(dungeon.min, dungeon.max) }
   if dungeon.mobs then facts[#facts + 1] = "Mobs " .. dungeon.mobs end
   if dungeon.boss then facts[#facts + 1] = "Top boss " .. dungeon.boss end
+  -- Dungeons the beta has not shown yet fall back to the Classic quest list, which may differ.
+  if dungeon.classic then facts[#facts + 1] = ORANGE .. "Classic list, not seen on the beta yet|r" end
   panel.facts:SetText(table.concat(facts, "  ·  "))
   panel.progress:SetText(("%d of %d quests done  ·  %s%s XP in your log (%d)|r  ·  %s XP still to earn  ·  %s XP in total"):format(
     done, mine, GOLD, groupDigits(inLogXp), inLogCount, groupDigits(leftXp), groupDigits(totalXp)))
@@ -571,6 +573,9 @@ refresh = function()
     end
     if quest.step and quest.of and quest.of > 1 then tags[#tags + 1] = ("%sstep %d/%d|r"):format(GREY, quest.step, quest.of) end
     if quest.inside then tags[#tags + 1] = INSIDE_TAG[quest.inside == "do" and "do_" or quest.inside] or "" end
+    if quest.only then tags[#tags + 1] = GREY .. quest.only .. " only|r" end
+    -- A quest filled in from the Classic list inside an otherwise beta-backed dungeon.
+    if quest.classic and not dungeon.classic then tags[#tags + 1] = GREY .. "from the Classic list|r" end
     row.tags:SetText(table.concat(tags, GREY .. "  ·  |r"))
     if #tags > 0 then
       row.tags:Show()
