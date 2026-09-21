@@ -2,7 +2,7 @@
 ## Title: WoW Forever Builds
 ## Notes: Talent guides, a dungeon quest panel beside the group finder, and character export for wowforeverbuilds.com. Type /wfb in game.
 ## Author: WoW Forever Builds
-## Version: 1.4.0
+## Version: 1.4.1
 ## X-Website: https://wowforeverbuilds.com
 ## X-Curse-Project-ID: 1704398
 ## SavedVariables: WoWForeverBuildsDB

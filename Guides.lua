@@ -159,7 +159,7 @@ ns.guides = {
     { id = "melee-burst-restoration-shaman-dungeon-leveling", title = "Melee Burst 5-man: Restoration Shaman healing and totem talents (levels 40–60)", spec = "Restoration", kind = "Dungeon leveling", from = 40, to = 60, order = "20202020202424242424272727282329292b2a2a2c2c2c2d2a2e2e2e2e2e2f22222221212121212626262a2a29292923232525" },
   },
   MAGE = {
-    { id = "beta-20-frost-mage-leveling", title = "WoW Forever beta Mage build for level 20: Frost for safe, fast kills", spec = "Frost", kind = "Leveling", from = 10, to = 20, order = "2121212121232323232327" },
+    { id = "beta-20-frost-mage-leveling", title = "WoW Forever beta Mage build for level 20: Frost with Frostbite and Ice Lance", spec = "Frost", kind = "Leveling", from = 10, to = 20, order = "2222222222262626232329" },
     { id = "fire-mage-leveling", title = "Fire Mage leveling guide 10–40: Ignite, Hot Streak and Combustion talent order", spec = "Fire", kind = "Leveling", from = 10, to = 40, order = "121212121213131313131815151514141c1c1c1b1e1d1d1d161f1f1f1f1f1g" },
     { id = "frost-shatter-mage-leveling", title = "Frost Mage leveling guide 10–60: Shatter and Ice Lance single-target talent order", spec = "Frost", kind = "Leveling", from = 10, to = 60, order = "212121212126262623232323232525292727272d2d2d2d2d2c2f2g2g28282i282h2h2h2h2h2b2b222222242424222220202e2e" },
     { id = "arcane-mage-pve-guide", title = "Arcane Mage PvE guide: level 60 Arcane Blast and Arcane Power raid build", spec = "Arcane", kind = "Endgame PvE", from = 10, to = 60, order = "0101010101020202020203030505050505090c0c0c0d0e0f0f0f0f0f0g0g0g0h1111111212121212131313131316161c1c1c14" },
@@ -196,7 +196,7 @@ ns.guides = {
   },
   DRUID = {
     { id = "restoration-hybrid-druid-leveling", title = "Restoration Druid leveling guide 1–40: solo healer hybrid talent order", spec = "Restoration", kind = "Leveling", from = 1, to = 40, order = "00000000002020202020222222222225252526262a292929262b2c2c2c2626" },
-    { id = "beta-20-feral-druid-leveling", title = "WoW Forever beta Druid build for level 20: Feral cat, not Wrath", spec = "Feral Combat", kind = "Leveling", from = 10, to = 20, order = "1010101010121215151518" },
+    { id = "beta-20-feral-druid-leveling", title = "WoW Forever beta Druid build for level 20: Bear until 20, then Cat", spec = "Feral Combat", kind = "Leveling", from = 10, to = 20, order = "1010101010121211111117" },
     { id = "rogue-druid-feral-combat-druid-group-leveling", title = "Rogue + Druid duo leveling 10–35: Feral Druid bear tank and heals", spec = "Feral Combat", kind = "Duo leveling", from = 10, to = 35, order = "1010101010131313151518181616171c1c1b1b1b1e1a151d1d1g" },
     { id = "balance-caster-druid-leveling", title = "Balance Druid leveling guide 10–50: Moonkin talent order with Improved Wrath", spec = "Balance", kind = "Leveling", from = 10, to = 50, order = "000000000003030404050506060607090a0a0a0a0a0d0202020f0f0f0f0f0g0b0b0b0b0b2020202020" },
     { id = "feral-cat-druid-leveling", title = "Feral Druid leveling guide 10–60: Cat Form talent order with Mangle and Berserk", spec = "Feral Combat", kind = "Leveling", from = 10, to = 60, order = "1010101010121215151518181616171b1b1b1a1c1c1f1f1f1d1d1e1h1h1h1h1h1i212121212122222222221919191111111111" },

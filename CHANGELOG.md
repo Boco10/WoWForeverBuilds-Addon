@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- The level 20 beta talent guides follow what players found on the first beta weekend: Frost Mages take the Frostbite and Ice Lance build, and Feral Druids level in Bear Form until Cat Form arrives at 20.
+
 ## 1.4.0
 
 - The quest panel now covers every dungeon on the chart up to level 60: Uldaman, Zul'Farrak, Maraudon, Sunken Temple, Blackrock Depths, Lower Blackrock Spire, all three Dire Maul wings, Scholomance, both sides of Stratholme, Razorfen Downs and the four Scarlet Monastery wings. 27 dungeons and 326 quests, up from 10 and 66.
