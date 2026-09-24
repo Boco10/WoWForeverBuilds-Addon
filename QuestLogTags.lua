@@ -68,6 +68,7 @@ end
 --- Put the prefix in front of a title font string, once.
 local function markFontString(fontString)
   if not fontString or not fontString.GetText or not fontString.SetText then return false end
+  if ns.Option and not ns.Option("questLogTags", true) then return false end
   local text = fontString:GetText()
   if type(text) ~= "string" or text == "" then return false end
   if text:find("|cffffd100[D]", 1, true) or text:find("|cffff8000[D>]", 1, true) then return true end

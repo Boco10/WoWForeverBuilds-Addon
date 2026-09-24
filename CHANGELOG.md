@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+
+- New: **route guides**. `/wfb route` opens a panel that walks you through an errand stop by stop, with a map pin (or a TomTom arrow) on the current stop. Chat tells you what to do when you arrive, and picking up the stop's quest moves you on. Progress is kept per character.
+- The world map gets a **Routes** button: pick a route there and its stops show as numbered pins on the zone and continent maps. Hover a pin for what to do, click it to make it your current stop.
+- New **minimap icon**: left click opens the route guides, right click a menu with everything the addon does (routes, Dungeon Quest helper, talent guide on/off, talent window, character export). Drag to move it; `/wfb minimap` hides or shows it.
+- New **settings page** under Options → AddOns → WoW Forever Builds (or `/wfb options`): on/off switches for the minimap icon, the talent guide and its panel and chat messages, the quest panel opening with the group finder, the `[D]` quest log marks, the world map pins, arrival chat and the TomTom arrow — plus dropdowns to pick your talent guide and your route.
+- Fixed: the Dungeon Quest helper opened from chat, the minimap or the settings page closed itself straight away when the group finder was not open. It now stays open until you close it.
+- The talent window button on the settings page and in the minimap menu opens the Forever talent window (the Talents tab of the new spellbook).
+- The route panel is laid out for reading: a progress bar, numbered stop cards (the current one open, the rest open on click, done ones ticked), a solid background, and the video and write-up links in text boxes you can copy with Ctrl+C.
+- The Dungeon Quest helper gets the same look as the route panel: a solid background, the dungeon name as a large title, a progress bar for the quests you have done, card rows with the quests you are on highlighted, and gold section headings.
+- First route: the **Cozy Sleeping Bag** — Westfall, the Barrens, Stonetalon, Loch Modan and the Hillsbrad jumping puzzle, as separate Alliance and Horde routes: each faction only sees its own. Rest in the bag for up to 3% more experience. The route comes from Zen's (OSWguild) beta video and is not confirmed by us yet.
+
 ## 1.4.1
 
 - The level 20 beta talent guides follow what players found on the first beta weekend: Frost Mages take the Frostbite and Ice Lance build, and Feral Druids level in Bear Form until Cat Form arrives at 20.

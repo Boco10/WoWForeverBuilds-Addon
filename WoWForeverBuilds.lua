@@ -183,6 +183,7 @@ local function show()
   frame:Show()
   frame:Refresh()
 end
+ns.ShowExport = show
 
 -- /wfb debug: saves the client's talent and skill API shape to WoWForeverBuildsDB.debug
 -- (written to WTF\Account\<account>\SavedVariables on /reload or logout).
@@ -317,6 +318,19 @@ local function command(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r quest panel is not loaded.")
     return
   end
+  if word:lower() == "route" or word:lower() == "routes" then
+    if ns.RouteCommand then return ns.RouteCommand(rest) end
+    DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r route guides are not loaded.")
+    return
+  end
+  if word:lower() == "options" or word:lower() == "settings" or word:lower() == "config" then
+    if ns.OpenOptions then return ns.OpenOptions() end
+    return
+  end
+  if word:lower() == "minimap" then
+    if ns.MinimapCommand then return ns.MinimapCommand() end
+    return
+  end
   if word:lower() == "debug" then
     WoWForeverBuildsDB = WoWForeverBuildsDB or {}
     local ok, result = pcall(collectDebug)
@@ -334,5 +348,5 @@ SlashCmdList.WOWFOREVERBUILDS = command
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-  DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r loaded. |cffffffff/wfb|r exports this character, |cffffffff/wfb guide|r shows the talent guide, |cffffffff/wfb quests|r lists dungeon quests.")
+  DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r loaded. |cffffffff/wfb|r exports this character, |cffffffff/wfb guide|r shows the talent guide, |cffffffff/wfb quests|r lists dungeon quests, |cffffffff/wfb route|r opens the route guides.")
 end)

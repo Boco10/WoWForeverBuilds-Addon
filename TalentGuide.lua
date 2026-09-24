@@ -655,7 +655,10 @@ end
 
 -- Chat messages -------------------------------------------------------------------------------------------------
 
+local function chatOn() return not ns.Option or ns.Option("guideChat", true) end
+
 local function announceLevel(level)
+  if not chatOn() then return end
   local guide = currentGuide()
   if not guide or level < ns.firstTalentLevel then return end
   local state = evaluate(guide, readTalents())
@@ -674,7 +677,7 @@ local function checkOffGuide()
   if not guide then return end
   local state = evaluate(guide, readTalents())
   local signature = offText(state.off)
-  if signature ~= lastOff and signature ~= "" and lastOff ~= nil then
+  if signature ~= lastOff and signature ~= "" and lastOff ~= nil and chatOn() then
     local step = state.nextIndex and state.steps[state.nextIndex]
     print("|cffff4040Off the guide:|r " .. signature .. (step and string.format(". The guide's next pick is %s %d/%d.", step.name, step.rank, step.maxRank) or "."))
   end
@@ -682,6 +685,48 @@ local function checkOffGuide()
 end
 
 -- Commands ------------------------------------------------------------------------------------------------------
+
+--- Open or close the talent window. Forever uses the modern PlayerSpellsFrame (talents are a tab of it),
+--- older clients the classic talent frame. Called through securecallfunction, as Blizzard's own
+--- buttons do, so opening it from an addon does not taint it.
+function ns.ToggleTalents()
+  if InCombatLockdown and InCombatLockdown() then
+    return print("The talent window cannot be opened from an addon in combat.")
+  end
+  local run = securecallfunction or function(fn, ...) return fn(...) end
+  local util = _G.PlayerSpellsUtil
+  if util then
+    for _, name in ipairs({ "ToggleClassTalentFrame", "ToggleClassTalentOrSpecFrame", "OpenToClassTalentsTab" }) do
+      if type(util[name]) == "function" and pcall(run, util[name]) then return end
+    end
+  end
+  if type(ToggleTalentFrame) ~= "function" and type(TalentFrame_LoadUI) == "function" then pcall(TalentFrame_LoadUI) end
+  if type(ToggleTalentFrame) == "function" and pcall(run, ToggleTalentFrame) then return end
+  print("Could not open the talent window on this client. Press the talent key (N) instead.")
+end
+
+--- For the minimap menu's on/off tick; nil when this class has no guides.
+function ns.TalentGuideEnabled()
+  if not db then return nil end
+  return not db.off
+end
+
+--- For the options panel: this class's guides and the one in use.
+function ns.TalentGuideChoices()
+  if not db then return nil end
+  local _, index = currentGuide()
+  return classGuides(), index
+end
+
+--- For the options panel: whether the order panel sits beside the talent window.
+function ns.TalentGuidePanelShown()
+  return db ~= nil and not db.hidePanel
+end
+function ns.SetTalentGuidePanelShown(shown)
+  if not db then return end
+  db.hidePanel = not shown or nil
+  ns.RefreshGuide()
+end
 
 function ns.GuideCommand(args)
   if not db then return end

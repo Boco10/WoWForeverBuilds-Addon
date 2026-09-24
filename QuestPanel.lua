@@ -372,7 +372,11 @@ local function buildRow(index)
   row:SetWidth(ROW_WIDTH)
   row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
 
-  row.stripe = row:CreateTexture(nil, "BACKGROUND")
+  row.bg = row:CreateTexture(nil, "BACKGROUND")
+  row.bg:SetAllPoints()
+  row.bg:SetColorTexture(1, 1, 1, 0.03)
+
+  row.stripe = row:CreateTexture(nil, "BORDER")
   row.stripe:SetPoint("TOPLEFT", 0, 0)
   row.stripe:SetPoint("BOTTOMLEFT", 0, 0)
   row.stripe:SetWidth(3)
@@ -445,6 +449,7 @@ refresh = function()
   elseif dungeon.side == "both" then
     place = place .. "  " .. GREY .. "Both factions|r"
   end
+  panel.title:SetText(dungeon.name)
   panel.place:SetText(place)
   local facts = { ("Players %d-%d"):format(dungeon.min, dungeon.max) }
   if dungeon.mobs then facts[#facts + 1] = "Mobs " .. dungeon.mobs end
@@ -452,8 +457,17 @@ refresh = function()
   -- Dungeons the beta has not shown yet fall back to the Classic quest list, which may differ.
   if dungeon.classic then facts[#facts + 1] = ORANGE .. "Classic list, not seen on the beta yet|r" end
   panel.facts:SetText(table.concat(facts, "  ·  "))
-  panel.progress:SetText(("%d of %d quests done  ·  %s%s XP in your log (%d)|r  ·  %s XP still to earn  ·  %s XP in total"):format(
-    done, mine, GOLD, groupDigits(inLogXp), inLogCount, groupDigits(leftXp), groupDigits(totalXp)))
+  panel.bar:SetMinMaxValues(0, math.max(mine, 1))
+  panel.bar:SetValue(done)
+  if mine > 0 and done == mine then
+    panel.bar:SetStatusBarColor(0.25, 0.8, 0.25)
+    panel.barText:SetText(("All %d quests done"):format(mine))
+  else
+    panel.bar:SetStatusBarColor(0.9, 0.7, 0.1)
+    panel.barText:SetText(("%d of %d quests done  ·  %d in your log"):format(done, mine, inLogCount))
+  end
+  panel.progress:SetText(("%s%s XP*|r in your log  ·  %s XP* still to earn  ·  %s XP* in total"):format(
+    GOLD, groupDigits(inLogXp), groupDigits(leftXp), groupDigits(totalXp)))
 
   -- Only worth saying "both factions" when the dungeon also has faction-only quests.
   local factionSplit = false
@@ -534,11 +548,12 @@ refresh = function()
       row.stripe:Show()
       local height = math.max(row.title:GetStringHeight() + row.tags:GetStringHeight() + 12, 30)
       row:SetHeight(height)
+      row.bg:SetColorTexture(1, 1, 1, (preStatus == "active" or preStatus == "turnin") and 0.1 or 0.03)
       row:SetAlpha(0.85)
       row:ClearAllPoints()
       row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
       row:Show()
-      y = y + height + 3
+      y = y + height + 4
     else
     local status, colour, badge = statusOf(quest)
 
@@ -617,7 +632,7 @@ refresh = function()
       panel.doneLine:SetPoint("RIGHT", panel.content, "RIGHT", -4, 0)
       panel.doneLabel:ClearAllPoints()
       panel.doneLabel:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 14)
-      panel.doneLabel:SetText(("%sDone  (%d)|r"):format(GREY, #finished))
+      panel.doneLabel:SetText(("%sDONE|r  %s(%d)|r"):format(GOLD, GREY, #finished))
       panel.doneLine:Show()
       panel.doneLabel:Show()
       y = y + 30
@@ -629,16 +644,18 @@ refresh = function()
       panel.otherLine:SetPoint("RIGHT", panel.content, "RIGHT", -4, 0)
       panel.otherLabel:ClearAllPoints()
       panel.otherLabel:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 14)
-      panel.otherLabel:SetText(("%s%s  (%d) — you cannot take these|r"):format(GREY, otherName, #other))
+      panel.otherLabel:SetText(("%s%s|r  %s(%d) — you cannot take these|r"):format(GOLD, otherName:upper(), GREY, #other))
       panel.otherLine:Show()
       panel.otherLabel:Show()
       y = y + 30
     end
+    -- Quests you are on stand out like the current stop in the route panel.
+    row.bg:SetColorTexture(1, 1, 1, (status == "active" or status == "turnin") and 0.1 or 0.03)
     row:SetAlpha(not canTake(quest) and 0.4 or isCompleted(quest.id) and 0.45 or 1)
     row:ClearAllPoints()
     row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
     row:Show()
-    y = y + height + 3
+    y = y + height + 4
     end
   end
   if #finished == 0 then
@@ -689,7 +706,7 @@ local function build()
     close:SetPoint("TOPRIGHT", -4, -4)
   end
   panel = frame
-  panel:SetSize(PANEL_WIDTH, 470)
+  panel:SetSize(PANEL_WIDTH, 580)
   panel:SetPoint("CENTER")
   panel:SetMovable(true)
   panel:EnableMouse(true)
@@ -700,34 +717,53 @@ local function build()
   panel:Hide()
   if panel.TitleText then panel.TitleText:SetText("wowforeverbuilds - Dungeon Quest helper") end
 
-  -- Header: zone, then the fight facts, then your progress. Fixed rows, so nothing can overlap.
+  -- A solid backing so the text does not sit on top of the game world (same look as the route panel).
+  local backing = panel:CreateTexture(nil, "BACKGROUND", nil, 1)
+  backing:SetPoint("TOPLEFT", 6, -26)
+  backing:SetPoint("BOTTOMRIGHT", -6, 6)
+  backing:SetColorTexture(0.05, 0.05, 0.06, 0.92)
+
+  -- Header: dungeon name with zone and faction beside it, the fight facts, a progress bar, the XP
+  -- totals. Fixed rows, so nothing can overlap.
+  panel.title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+  panel.title:SetPoint("TOPLEFT", 16, -64)
   panel.place = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-  panel.place:SetPoint("TOPLEFT", 16, -62)
-  panel.place:SetWidth(PANEL_WIDTH - 32)
+  panel.place:SetPoint("BOTTOMLEFT", panel.title, "BOTTOMRIGHT", 12, 2)
   panel.place:SetJustifyH("LEFT")
 
-  panel.facts = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-  panel.facts:SetPoint("TOPLEFT", 16, -78)
+  panel.facts = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+  panel.facts:SetPoint("TOPLEFT", 16, -92)
   panel.facts:SetWidth(PANEL_WIDTH - 32)
   panel.facts:SetJustifyH("LEFT")
 
-  panel.progress = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  panel.progress:SetPoint("TOPLEFT", 16, -94)
+  panel.bar = CreateFrame("StatusBar", nil, panel)
+  panel.bar:SetPoint("TOPLEFT", 16, -112)
+  panel.bar:SetSize(PANEL_WIDTH - 32, 18)
+  panel.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  local barBg = panel.bar:CreateTexture(nil, "BACKGROUND")
+  barBg:SetAllPoints()
+  barBg:SetColorTexture(1, 1, 1, 0.08)
+  panel.barText = panel.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  panel.barText:SetPoint("CENTER")
+
+  panel.progress = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  panel.progress:SetPoint("TOPLEFT", 16, -138)
+  panel.progress:SetWidth(PANEL_WIDTH - 32)
   panel.progress:SetJustifyH("LEFT")
 
-  local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  hint:SetPoint("TOPLEFT", 16, -110)
-  hint:SetText("Click a quest for the full chain")
-
   local xpNote = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  xpNote:SetPoint("TOPLEFT", 16, -124)
+  xpNote:SetPoint("TOPLEFT", 16, -154)
   xpNote:SetWidth(PANEL_WIDTH - 32)
   xpNote:SetJustifyH("LEFT")
   xpNote:SetText(ORANGE .. "*XP is inaccurate:|r it comes from earlier versions of the game. Real WoW Forever values are being collected and will replace it.")
 
+  local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+  hint:SetPoint("TOPLEFT", 16, -176)
+  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click a quest to open its full chain|r")
+
   local function heading(x, width, label, justify)
     local text = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    text:SetPoint("TOPLEFT", 14 + x, -146)
+    text:SetPoint("TOPLEFT", 14 + x, -196)
     text:SetWidth(width)
     text:SetJustifyH(justify or "LEFT")
     text:SetText(GREY .. label .. "|r")
@@ -742,12 +778,12 @@ local function build()
 
   local rule = panel:CreateTexture(nil, "ARTWORK")
   rule:SetColorTexture(1, 1, 1, 0.08)
-  rule:SetPoint("TOPLEFT", 14, -160)
-  rule:SetPoint("TOPRIGHT", -30, -160)
+  rule:SetPoint("TOPLEFT", 14, -210)
+  rule:SetPoint("TOPRIGHT", -30, -210)
   rule:SetHeight(1)
 
   local scroll = CreateFrame("ScrollFrame", "WoWForeverBuildsQuestScroll", panel, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 14, -166)
+  scroll:SetPoint("TOPLEFT", 14, -216)
   scroll:SetPoint("BOTTOMRIGHT", -32, 14)
   panel.content = CreateFrame("Frame", nil, scroll)
   panel.content:SetSize(ROW_WIDTH, 1)
@@ -778,6 +814,7 @@ local function build()
   end)
   panel:SetScript("OnHide", function(self)
     if not self.closedByAddon then ns.questPanelDismissed = true end
+    self.openedByHand = nil
   end)
   return panel
 end
@@ -811,7 +848,8 @@ function ns.ToggleQuestPanel()
   end
   ns.questPanelDismissed = nil
   selectedSlug = defaultSlug() or selectedSlug
-  anchorToFinder()
+  -- Opened without the group finder (chat, minimap, options): stays open until you close it.
+  panel.openedByHand = not anchorToFinder()
   panel:Show()
 end
 
@@ -819,6 +857,7 @@ local function onFinderShown()
   build()
   -- Closing the panel yourself keeps it closed until you ask for it again with /wfb quests.
   if ns.questPanelDismissed then return end
+  if ns.Option and not ns.Option("questAutoOpen", true) then return end
   selectedSlug = defaultSlug() or selectedSlug
   anchorToFinder()
   panel:Show()
@@ -888,13 +927,13 @@ watcher:SetScript("OnUpdate", function(_, elapsed)
   if open then
     ensureToggleButton()
     if not panel or not panel:IsShown() then
-      if not ns.questPanelDismissed then onFinderShown() end
+      if not ns.questPanelDismissed and (not ns.Option or ns.Option("questAutoOpen", true)) then onFinderShown() end
     end
     updateToggleButton()
   elseif toggleButton and toggleButton:IsShown() then
     toggleButton:Hide()
   end
-  if not open and panel and panel:IsShown() then
+  if not open and panel and panel:IsShown() and not panel.openedByHand then
     hideQuietly()
     -- Closing the finder clears the dismissal, so the panel comes back with the next one you open.
     ns.questPanelDismissed = nil

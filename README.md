@@ -1,6 +1,6 @@
 # WoW Forever Builds
 
-In-game companion addon for [World of Warcraft: Forever](https://wowforeverbuilds.com). Talent guides in your talent window, a dungeon quest panel beside the group finder, and one-line character export for [wowforeverbuilds.com](https://wowforeverbuilds.com).
+In-game companion addon for [World of Warcraft: Forever](https://wowforeverbuilds.com). Talent guides in your talent window, a dungeon quest panel beside the group finder, route guides with waypoints, and one-line character export for [wowforeverbuilds.com](https://wowforeverbuilds.com).
 
 Nothing is sent anywhere. The addon reads your own character and the quest log, and every piece of data it needs ships inside it.
 
@@ -28,6 +28,23 @@ Open the group finder and the **wowforeverbuilds - Dungeon Quest helper** panel 
 - Running totals: what the quests in your log are worth, what the dungeon still owes you, and the full total. Experience figures come from earlier versions of the game and are marked as estimates until real WoW Forever values are collected.
 
 `/wfb quests` opens the panel from chat.
+
+### Route guides with waypoints
+`/wfb route` opens a panel that walks you through an errand the quest log does not point you to, stop by stop.
+
+- The current stop gets a map pin, or a TomTom arrow when TomTom is installed.
+- Chat tells you what to do when you arrive, and picking up the stop's quest moves you on to the next one.
+- Routes can be faction-specific: each character sees only its own faction's version.
+- Progress is kept per character.
+- **On the world map:** a **Routes** button in the corner picks a route, and its stops show as numbered pins (green = current, gold = still to do, grey = done) on the zone map and on the continent. Hover a pin for what to do there; click it to make it your current stop.
+
+### Minimap icon
+Left click opens the route guides; right click opens a menu with the routes, the Dungeon Quest helper, a tick to turn the talent guide on or off, the talent window and the character export. Drag it around the minimap. `/wfb minimap` hides or shows it.
+
+The first route is the **Cozy Sleeping Bag** (up to 3% more experience while you rest in it). `/wfb route list` lists the routes, `/wfb route next` / `/wfb route back` move between stops, `/wfb route stop` clears the waypoint.
+
+### Settings page
+The addon has its own page under **Options → AddOns → WoW Forever Builds** (or `/wfb options`): switch each part on or off, pick your talent guide and your route from a dropdown, and open any panel from there. Switches: minimap icon, talent guide, its order panel and chat messages, the quest panel opening with the group finder, the `[D]` marks in the quest log, the Routes button and pins on the world map, arrival chat, and the TomTom arrow.
 
 ### Character export
 `/wfb` opens a window with a single line: name, realm, class, race, faction, level, talent points per tree, primary professions and whether you are on a Hardcore realm. Copy it, then paste it on [My characters](https://wowforeverbuilds.com/account/characters) to import.
