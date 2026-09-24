@@ -41,7 +41,7 @@ Open the group finder and the **wowforeverbuilds - Dungeon Quest helper** panel 
 ### Minimap icon
 Left click opens the route guides; right click opens a menu with the routes, the Dungeon Quest helper, a tick to turn the talent guide on or off, the talent window and the character export. Drag it around the minimap. `/wfb minimap` hides or shows it.
 
-The first route is the **Cozy Sleeping Bag** (up to 3% more experience while you rest in it). `/wfb route list` lists the routes, `/wfb route next` / `/wfb route back` move between stops, `/wfb route stop` clears the waypoint.
+The first route is the **Cozy Sleeping Bag** (up to 3% more experience while you rest in it). More routes are added in updates as they are found: hidden quest chains, collectibles and other errands worth the trip. `/wfb route list` lists the routes, `/wfb route next` / `/wfb route back` move between stops, `/wfb route stop` clears the waypoint.
 
 ### Settings page
 The addon has its own page under **Options → AddOns → WoW Forever Builds** (or `/wfb options`): switch each part on or off, pick your talent guide and your route from a dropdown, and open any panel from there. Switches: minimap icon, talent guide, its order panel and chat messages, the quest panel opening with the group finder, the `[D]` marks in the quest log, the Routes button and pins on the world map, arrival chat, and the TomTom arrow.
