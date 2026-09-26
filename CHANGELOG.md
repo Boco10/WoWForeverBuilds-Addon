@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- Dungeon Quest helper: **shift-click** a quest to put its link in chat, **ctrl-click** it for a box with its wowforeverbuilds.com page to copy with Ctrl+C. The open quest also shows its web address.
+- The helper sits a little further from the group finder, so the finder's side tabs are no longer covered.
+
 ## 1.5.0
 
 - New: **route guides**. `/wfb route` opens a panel that walks you through an errand stop by stop, with a map pin (or a TomTom arrow) on the current stop. Chat tells you what to do when you arrive, and picking up the stop's quest moves you on. Progress is kept per character.

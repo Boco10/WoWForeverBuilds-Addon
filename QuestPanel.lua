@@ -233,6 +233,14 @@ local function objectiveLines(quest)
   return table.concat(lines, "\n")
 end
 
+local SITE = "https://wowforeverbuilds.com"
+
+--- The quest's page on the site; Classic-only quests have no page, so they get the quest list.
+local function questUrl(quest)
+  if quest.slug then return SITE .. "/quests/" .. quest.slug end
+  return SITE .. "/quests"
+end
+
 --- The lines shown under a quest when it is expanded: pick up, do, hand in, then the chain.
 local function detailLines(quest)
   local lines = {}
@@ -283,6 +291,7 @@ local function detailLines(quest)
     end
   end
   if #lines == 0 then lines[#lines + 1] = "Picked up at the dungeon." end
+  lines[#lines + 1] = GREY .. "Web: " .. questUrl(quest) .. "  (ctrl-click the quest to copy)|r"
   return table.concat(lines, "\n")
 end
 
@@ -367,6 +376,59 @@ end
 
 local refresh
 
+--- Shift-click: a clickable quest link in the chat box, like shift-clicking in the quest log.
+local function linkInChat(quest)
+  local link = ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(quest.id, quest.level or 0, quest.title)
+  if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then return end
+  if ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
+end
+
+--- Ctrl-click: a small box with the quest's web address, selected for Ctrl+C.
+local copyBox
+local function showCopyBox(quest)
+  if not copyBox then
+    local f = CreateFrame("Frame", "WoWForeverBuildsQuestLink", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    if f.SetBackdrop then
+      f:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", tile = true, tileSize = 32, edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 } })
+    end
+    f:SetSize(460, 96)
+    f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true)
+    tinsert(UISpecialFrames, "WoWForeverBuildsQuestLink")
+    f.label = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.label:SetPoint("TOPLEFT", 20, -18)
+    f.label:SetPoint("TOPRIGHT", -20, -18)
+    f.label:SetJustifyH("LEFT")
+    local box = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    box:SetPoint("TOPLEFT", 24, -44)
+    box:SetPoint("TOPRIGHT", -20, -44)
+    box:SetHeight(24)
+    box:SetAutoFocus(true)
+    box:SetScript("OnEscapePressed", function() f:Hide() end)
+    box:SetScript("OnEnterPressed", function() f:Hide() end)
+    box:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
+    -- Read-only: typing puts the address back.
+    box:SetScript("OnTextChanged", function(self, userInput)
+      if userInput then
+        self:SetText(f.url or "")
+        self:HighlightText()
+      end
+    end)
+    f.box = box
+    copyBox = f
+  end
+  copyBox.url = questUrl(quest)
+  copyBox.label:SetText(GOLD .. quest.title .. "|r  " .. GREY .. "Ctrl+C to copy, Esc to close|r")
+  copyBox:ClearAllPoints()
+  copyBox:SetPoint("TOP", panel, "TOP", 0, -40)
+  copyBox:Show()
+  copyBox.box:SetText(copyBox.url)
+  copyBox.box:SetCursorPosition(0)
+  copyBox.box:SetFocus()
+  copyBox.box:HighlightText()
+end
+
 local function buildRow(index)
   local row = CreateFrame("Button", nil, panel.content)
   row:SetWidth(ROW_WIDTH)
@@ -410,6 +472,8 @@ local function buildRow(index)
 
   row:SetScript("OnClick", function(self)
     if not self.questID then return end
+    if self.quest and IsShiftKeyDown() then return linkInChat(self.quest) end
+    if self.quest and IsControlKeyDown() then return showCopyBox(self.quest) end
     expandedId = expandedId ~= self.questID and self.questID or nil
     refresh()
   end)
@@ -520,6 +584,8 @@ refresh = function()
     rows[i] = rows[i] or buildRow(i)
     local row = rows[i]
     row.questID = quest.id
+    -- Written preludes have no id, so there is nothing to link.
+    row.quest = not quest.prelude and quest or nil
     if quest.prelude then
       row.title:ClearAllPoints()
       row.title:SetPoint("TOPLEFT", COL_X.quest + 18, -3)
@@ -759,7 +825,7 @@ local function build()
 
   local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
   hint:SetPoint("TOPLEFT", 16, -176)
-  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click a quest to open its full chain|r")
+  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click: full chain  ·  shift-click: link in chat  ·  ctrl-click: web link|r")
 
   local function heading(x, width, label, justify)
     local text = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
@@ -825,7 +891,8 @@ local function anchorToFinder()
     local frame = _G[name]
     if frame and frame:IsShown() then
       panel:ClearAllPoints()
-      panel:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+      -- Room for the finder's side tabs, which hang off its right edge.
+      panel:SetPoint("TOPLEFT", frame, "TOPRIGHT", 52, 0)
       return true
     end
   end
