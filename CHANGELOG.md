@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.2
+
+- Fixed: shift-clicking a quest in the Dungeon Quest helper sent plain white text. Quests in your log now go out as a real quest link; the server does not allow links to other quests, so those send the quest name and its wowforeverbuilds.com address instead.
+- 14 dungeon quests now show the pre-quest you need first, e.g. Raptor Horns before Smart Drinks (Wailing Caverns), The Day After before Gnogaine (Gnomeregan), and several in Blackrock Depths, Lower Blackrock Spire, Dire Maul and Stratholme.
+
 ## 1.5.1
 
 - Dungeon Quest helper: **shift-click** a quest to put its link in chat, **ctrl-click** it for a box with its wowforeverbuilds.com page to copy with Ctrl+C. The open quest also shows its web address.

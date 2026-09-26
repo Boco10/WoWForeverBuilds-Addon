@@ -376,9 +376,50 @@ end
 
 local refresh
 
---- Shift-click: a clickable quest link in the chat box, like shift-clicking in the quest log.
+--- Shift-click: a clickable quest link in the chat box, like shift-clicking in the quest log, or the
+--- quest's web address when it is not in your log.
+--- The game's own link for the quest. The server drops a link whose level or title does not match
+--- its data and sends plain text instead, so a hand-built one is only the last resort.
+local function questLink(quest)
+  if C_QuestLog and C_QuestLog.GetQuestLink then
+    local ok, link = pcall(C_QuestLog.GetQuestLink, quest.id)
+    if ok and type(link) == "string" and link ~= "" then return link end
+  end
+  if type(GetQuestLink) == "function" then
+    local ok, link = pcall(GetQuestLink, quest.id)
+    if ok and type(link) == "string" and link ~= "" then return link end
+    -- Older clients take a quest log index, so this works for quests you are on.
+    if type(GetNumQuestLogEntries) == "function" and type(GetQuestLogTitle) == "function" then
+      for index = 1, GetNumQuestLogEntries() do
+        local _, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(index)
+        if not isHeader and questID == quest.id then
+          ok, link = pcall(GetQuestLink, index)
+          if ok and type(link) == "string" and link ~= "" then return link end
+        end
+      end
+    end
+  end
+  -- The Forever client's own quest log links carry level 0 ("|Hquest:5041:0|h"); a real level makes
+  -- the server strip the link. The colour is the quest's difficulty for you, as the quest log gives it.
+  local colour = "ffffff00"
+  if type(GetQuestDifficultyColor) == "function" and quest.level then
+    local ok, c = pcall(GetQuestDifficultyColor, quest.level)
+    if ok and type(c) == "table" and c.r then
+      colour = ("ff%02x%02x%02x"):format(math.floor(c.r * 255 + 0.5), math.floor(c.g * 255 + 0.5), math.floor(c.b * 255 + 0.5))
+    end
+  end
+  return ("|c%s|Hquest:%d:0|h[%s]|h|r"):format(colour, quest.id, quest.title)
+end
+
 local function linkInChat(quest)
-  local link = ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(quest.id, quest.level or 0, quest.title)
+  -- The server only lets a quest link through for a quest in your log; anything else arrives as
+  -- plain text. Those get the name in brackets and the quest's web address instead.
+  local link
+  if inLog(quest.id) then
+    link = questLink(quest)
+  else
+    link = "[" .. quest.title .. "] " .. questUrl(quest):gsub("^https://", "")
+  end
   if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then return end
   if ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
 end
@@ -825,7 +866,7 @@ local function build()
 
   local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
   hint:SetPoint("TOPLEFT", 16, -176)
-  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click: full chain  ·  shift-click: link in chat  ·  ctrl-click: web link|r")
+  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click: full chain  ·  shift-click: link in chat (web address if not in your log)  ·  ctrl-click: web link|r")
 
   local function heading(x, width, label, justify)
     local text = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
