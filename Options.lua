@@ -205,14 +205,14 @@ local function build()
   button("Open the talent window", 180, function() open(ns.ToggleTalents) end, 30)
   y = y + 30
 
-  heading("Dungeon Quest helper")
-  checkbox("Open the quest panel with the group finder", "Off: the panel only opens from the Quest helper button or /wfb quests.",
+  heading("Dungeon Journal")
+  checkbox("Open the Dungeon Journal with the group finder", "Off: the journal only opens from the Dungeon Journal button or /wfb quests.",
     function() return ns.Option("questAutoOpen", true) end,
     function(value) ns.SetOption("questAutoOpen", value) end)
   checkbox("Mark dungeon quests in the quest log with [D]", "Takes effect the next time the quest log redraws; /reload clears marks already shown.",
     function() return ns.Option("questLogTags", true) end,
     function(value) ns.SetOption("questLogTags", value) end)
-  button("Open the quest panel", 180, function() open(ns.ToggleQuestPanel) end, 30)
+  button("Open the Dungeon Journal", 180, function() open(ns.ToggleQuestPanel) end, 30)
   y = y + 30
 
   heading("Route guides")

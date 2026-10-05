@@ -48,7 +48,7 @@ local function menuInit(_, level)
       { notCheckable = false, checked = active == route.slug })
   end
   if active then add("   Stop the route", function() call(ns.StopRoute) end) end
-  add("Dungeon Quest helper", function() call(ns.ToggleQuestPanel) end)
+  add("Dungeon Journal", function() call(ns.ToggleQuestPanel) end)
   local guideOn = ns.TalentGuideEnabled and ns.TalentGuideEnabled()
   if guideOn ~= nil then
     add("Talent guide in the talent window", function()

@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: WoW Forever Builds
-## Notes: Talent guides, a dungeon quest panel beside the group finder, route guides with waypoints, and character export for wowforeverbuilds.com. Type /wfb in game.
+## Notes: Talent guides, a Dungeon Journal beside the group finder, route guides with waypoints, and character export for wowforeverbuilds.com. Type /wfb in game.
 ## Author: WoW Forever Builds
-## Version: 1.5.2
+## Version: 1.6.0
 ## X-Website: https://wowforeverbuilds.com
 ## X-Curse-Project-ID: 1704398
 ## SavedVariables: WoWForeverBuildsDB

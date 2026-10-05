@@ -1,23 +1,15 @@
--- A panel that opens beside the group finder and lists the selected dungeon's quests.
--- Click a quest to see where it starts and what has to be done first; finished quests grey out.
--- Data comes from QuestData.lua (generated); nothing here talks to the network.
+-- The Dungeon Journal: a window that opens beside the group finder for the selected dungeon.
+-- Quests are listed on the left; the one you click is shown on the right like a quest log page, with
+-- where it starts, what to do, where it is handed in, the chain before it and the rewards.
+-- A Bosses tab lists the dungeon's encounters. Data comes from QuestData.lua (generated); nothing
+-- here talks to the network.
 local _, ns = ...
 
-local PANEL_WIDTH = 690
-local ROW_WIDTH = PANEL_WIDTH - 46
--- Column widths, left to right: quest name, where you pick it up, pick-up level, sharing, status.
--- They are laid out from ROW_WIDTH so the last column cannot fall off the edge of the scroll area.
-local GAP = 6
-local COL_STATUS, COL_SHARE, COL_XP, COL_LEVEL, COL_WHERE = 48, 66, 60, 56, 146
-local COL_QUEST = ROW_WIDTH - COL_WHERE - COL_LEVEL - COL_XP - COL_SHARE - COL_STATUS - GAP * 6
-local COL_X = {
-  quest = GAP,
-  where = GAP * 2 + COL_QUEST,
-  level = GAP * 3 + COL_QUEST + COL_WHERE,
-  xp = GAP * 4 + COL_QUEST + COL_WHERE + COL_LEVEL,
-  share = GAP * 5 + COL_QUEST + COL_WHERE + COL_LEVEL + COL_XP,
-  status = GAP * 6 + COL_QUEST + COL_WHERE + COL_LEVEL + COL_XP + COL_SHARE,
-}
+local PANEL_WIDTH, PANEL_HEIGHT = 860, 590
+local LIST_WIDTH = 330
+local ROW_WIDTH = LIST_WIDTH - 40
+local ROW_HEIGHT = 46
+local BODY_TOP = -134
 
 --- 12,450 rather than 12450.
 local function groupDigits(value)
@@ -29,27 +21,63 @@ end
 local FACTION = UnitFactionGroup and UnitFactionGroup("player") or nil
 local MY_SIDE = FACTION == "Horde" and "horde" or FACTION == "Alliance" and "alliance" or nil
 
-local GREY, WHITE, GOLD, GREEN = "|cff8a8a8a", "|cffffffff", "|cffffd100", "|cff40d040"
+local GREY, GOLD, GREEN = "|cff8a8a8a", "|cffffd100", "|cff40d040"
 local ALLIANCE_BLUE, HORDE_RED = "|cff6aa9ff", "|cffe06060"
 local ORANGE = "|cffff8000"
 local SIDE_TAG = { alliance = ALLIANCE_BLUE .. "A|r", horde = HORDE_RED .. "H|r", both = GREY .. "A/H|r" }
--- Marker in front of a quest name: whose quest it is.
-local QUEST_SIDE_MARK = {
-  alliance = ALLIANCE_BLUE .. "[A]|r ",
-  horde = HORDE_RED .. "[H]|r ",
-  both = GREY .. "[A/H]|r ",
-}
--- Which step of a quest happens inside the dungeon.
-local INSIDE_TAG = {
-  given = GREEN .. "[given inside]|r",
-  drop = GREEN .. "[drops inside]|r",
-  turnin = GREEN .. "[hand in inside]|r",
-  do_ = GREEN .. "[do inside]|r",
-  entrance = GOLD .. "[at the entrance]|r",
+
+-- Journal colours: dark wood for the frame and the list, parchment for the quest page.
+local C = {
+  window = { 0.09, 0.07, 0.05, 0.97 },
+  card = { 0.17, 0.12, 0.08, 1 },
+  cardEdge = { 0.52, 0.39, 0.19, 1 },
+  pane = { 0.12, 0.09, 0.06, 1 },
+  paneEdge = { 0.4, 0.3, 0.15, 1 },
+  row = { 0.2, 0.14, 0.09, 1 },
+  rowEdge = { 0.42, 0.31, 0.16, 1 },
+  picked = { 0.45, 0.3, 0.12, 1 },
+  pickedEdge = { 0.95, 0.75, 0.32, 1 },
+  parchmentTop = { 0.9, 0.82, 0.64, 1 },
+  parchmentBottom = { 0.78, 0.67, 0.47, 1 },
+  parchmentEdge = { 0.33, 0.23, 0.11, 1 },
+  inkHead = { 0.1, 0.05, 0.01 },
+  ink = { 0.22, 0.14, 0.06 },
+  inkTitle = { 0.36, 0.18, 0.02 },
+  inkSoft = { 0.4, 0.3, 0.18 },
+  inkGood = { 0.1, 0.4, 0.08 },
+  inkWarn = { 0.6, 0.3, 0.0 },
+  rule = { 0.45, 0.33, 0.18, 0.7 },
 }
 
-local panel, rows, dropdown
-local selectedSlug, expandedId
+local CREST = {
+  alliance = "Interface\\TargetingFrame\\UI-PVP-Alliance",
+  horde = "Interface\\TargetingFrame\\UI-PVP-Horde",
+}
+local ICON = {
+  available = "Interface\\GossipFrame\\AvailableQuestIcon",
+  turnin = "Interface\\GossipFrame\\ActiveQuestIcon",
+  done = "Interface\\RaidFrame\\ReadyCheck-Ready",
+  boss = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull",
+}
+-- Which step of a quest happens inside the dungeon, for the Notes section.
+local INSIDE_NOTE = {
+  given = "Given inside the dungeon.",
+  drop = "Starts from an item that drops inside the dungeon.",
+  turnin = "Handed in inside the dungeon.",
+  ["do"] = "Done inside the dungeon.",
+  entrance = "Picked up at the dungeon entrance.",
+}
+
+local panel, dropdown, detail
+local rows = {}
+local selectedSlug, selectedQuestId, selectedBoss
+local mode = "quests"
+-- Whose quests the list shows; both-faction quests are always in it.
+local viewSide = MY_SIDE or "alliance"
+
+local function say(text)
+  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r " .. text) end
+end
 
 local function dungeonBySlug(slug)
   for _, dungeon in ipairs(ns.dungeons) do
@@ -61,7 +89,7 @@ local function canTake(quest)
   return quest.side == "both" or MY_SIDE == nil or quest.side == MY_SIDE
 end
 
---- Every quest of this dungeon, chain members kept together; the caller splits them by faction.
+--- Every quest of this dungeon, chain members kept together.
 local function questsFor(dungeon)
   local list = {}
   for _, quest in ipairs(dungeon) do list[#list + 1] = quest end
@@ -141,7 +169,7 @@ local function questLogEntryByName(name)
   return nil
 end
 
---- "done", "active" or nil for a quest we only know by name.
+--- "done", "active", "turnin" or nil for a quest we only know by name.
 local function statusByName(name)
   local ids = learnedIds()
   local inLogId = questLogEntryByName(name)
@@ -154,35 +182,17 @@ local function statusByName(name)
   return nil
 end
 
---- A prelude line reads "Quest name (where it starts)"; split it for the name and place columns.
-local function preludeRow(line, index, total)
-  local name, where = line:match("^(.-)%s*%((.+)%)$")
-  return {
-    title = name or line,
-    spot = where,
-    prelude = true,
-    step = index,
-    of = total,
-  }
-end
-
---- A quest that begins inside the dungeon, or follows on from another, is indented under it.
-local function indentOf(quest)
-  if quest.step and quest.step > 1 then return 18, "|cff8a8a8a> |r" end
-  if quest.inside == "given" or quest.inside == "drop" then return 18, "|cff40d040> |r" end
-  return 0, ""
-end
-
---- status, title colour, badge text.
+--- "done", "turnin", "active" or "todo".
 local function statusOf(quest)
-  if isCompleted(quest.id) then return "done", GREY, GREY .. "done|r" end
-  if readyForTurnIn(quest.id) then return "turnin", GREEN, GREEN .. "turn in|r" end
-  if inLog(quest.id) then return "active", GOLD, GOLD .. "in log|r" end
-  return "todo", WHITE, nil
+  if isCompleted(quest.id) then return "done" end
+  if readyForTurnIn(quest.id) then return "turnin" end
+  if inLog(quest.id) then return "active" end
+  return "todo"
 end
 
+--- Where the quest starts for the faction the journal is showing.
 local function whereFor(quest)
-  if MY_SIDE == "horde" then return quest.whereH or quest.whereA end
+  if viewSide == "horde" then return quest.whereH or quest.whereA end
   return quest.whereA or quest.whereH
 end
 
@@ -223,76 +233,12 @@ local function chainOf(quest)
   return #steps > 1 and steps or nil
 end
 
---- "kill these", "collect these" or "deliver this", read from the objective lines.
-local function objectiveLines(quest)
-  if not quest.obj or #quest.obj == 0 then return nil end
-  local lines = {}
-  for _, entry in ipairs(quest.obj) do
-    lines[#lines + 1] = "  - " .. entry
-  end
-  return table.concat(lines, "\n")
-end
-
 local SITE = "https://wowforeverbuilds.com"
 
 --- The quest's page on the site; Classic-only quests have no page, so they get the quest list.
 local function questUrl(quest)
   if quest.slug then return SITE .. "/quests/" .. quest.slug end
   return SITE .. "/quests"
-end
-
---- The lines shown under a quest when it is expanded: pick up, do, hand in, then the chain.
-local function detailLines(quest)
-  local lines = {}
-  local where = whereFor(quest)
-  if where then
-    lines[#lines + 1] = GOLD .. "Pick up:|r " .. where
-  elseif quest.from then
-    lines[#lines + 1] = GOLD .. "Pick up:|r from " .. quest.from
-  end
-  if quest.item then lines[#lines + 1] = GOLD .. "Pick up:|r loot " .. quest.item .. " (cannot be shared)" end
-  if quest.note then lines[#lines + 1] = GREEN .. "In the dungeon:|r " .. quest.note end
-  if quest.goal then lines[#lines + 1] = GOLD .. "Do:|r " .. quest.goal end
-  local objectives = objectiveLines(quest)
-  if objectives then lines[#lines + 1] = objectives end
-  if quest.turnIn then lines[#lines + 1] = GOLD .. "Hand in:|r " .. quest.turnIn end
-  lines[#lines + 1] = GREY .. ("Pick up from level %d · quest level %d"):format(quest.req or quest.level, quest.level) .. "|r"
-  if quest.xp then lines[#lines + 1] = GREY .. "Reward: " .. groupDigits(quest.xp) .. " XP (estimate from earlier game data)|r" end
-
-  local chain = chainOf(quest)
-  if chain or quest.pre then
-    lines[#lines + 1] = GOLD .. "Chain:|r"
-    -- Steps before this one that are not dungeon quests, so the beta data does not carry them.
-    if quest.pre then
-      for _, name in ipairs(quest.pre) do
-        lines[#lines + 1] = "  " .. GREY .. "- " .. name .. "  (before, outside this dungeon)|r"
-      end
-    end
-  end
-  if chain then
-    for index, step in ipairs(chain) do
-      local mark, name, suffix = "  ", step.name or "?", ""
-      if step.quest then
-        name = step.quest.title
-        if isCompleted(step.quest.id) then
-          mark = GREY .. "[x]|r "
-        elseif inLog(step.quest.id) then
-          mark = GOLD .. "[~]|r "
-        else
-          mark = "[ ] "
-        end
-        if step.quest.id == quest.id then suffix = GOLD .. "  <- this one|r" end
-        if step.dungeon and step.dungeon.slug ~= selectedSlug then suffix = suffix .. GREY .. "  (" .. step.dungeon.name .. ")|r" end
-      else
-        mark = "[ ] "
-        suffix = GREY .. "  (outside this dungeon)|r"
-      end
-      lines[#lines + 1] = ("  %d. %s%s%s"):format(index, mark, name, suffix)
-    end
-  end
-  if #lines == 0 then lines[#lines + 1] = "Picked up at the dungeon." end
-  lines[#lines + 1] = GREY .. "Web: " .. questUrl(quest) .. "  (ctrl-click the quest to copy)|r"
-  return table.concat(lines, "\n")
 end
 
 --- The dungeon you are standing in, when it is one we have quests for.
@@ -376,8 +322,13 @@ end
 
 local refresh
 
---- Shift-click: a clickable quest link in the chat box, like shift-clicking in the quest log, or the
---- quest's web address when it is not in your log.
+local function selectDungeon(slug)
+  if slug == selectedSlug then return end
+  selectedSlug = slug
+  selectedQuestId, selectedBoss = nil, nil
+  if detail then detail.scroll:SetVerticalScroll(0) end
+end
+
 --- The game's own link for the quest. The server drops a link whose level or title does not match
 --- its data and sends plain text instead, so a hand-built one is only the last resort.
 local function questLink(quest)
@@ -411,22 +362,23 @@ local function questLink(quest)
   return ("|c%s|Hquest:%d:0|h[%s]|h|r"):format(colour, quest.id, quest.title)
 end
 
+local function insertInChat(text)
+  if ChatEdit_InsertLink and ChatEdit_InsertLink(text) then return end
+  if ChatFrame_OpenChat then ChatFrame_OpenChat(text) end
+end
+
+--- A clickable quest link in the chat box, like shift-clicking in the quest log, or the quest's web
+--- address when it is not in your log.
 local function linkInChat(quest)
   -- The server only lets a quest link through for a quest in your log; anything else arrives as
   -- plain text. Those get the name in brackets and the quest's web address instead.
-  local link
-  if inLog(quest.id) then
-    link = questLink(quest)
-  else
-    link = "[" .. quest.title .. "] " .. questUrl(quest):gsub("^https://", "")
-  end
-  if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then return end
-  if ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
+  if inLog(quest.id) then return insertInChat(questLink(quest)) end
+  insertInChat("[" .. quest.title .. "] " .. questUrl(quest):gsub("^https://", ""))
 end
 
---- Ctrl-click: a small box with the quest's web address, selected for Ctrl+C.
+--- A small box with a web address, selected for Ctrl+C.
 local copyBox
-local function showCopyBox(quest)
+local function showCopyBox(label, url)
   if not copyBox then
     local f = CreateFrame("Frame", "WoWForeverBuildsQuestLink", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
     if f.SetBackdrop then
@@ -459,345 +411,818 @@ local function showCopyBox(quest)
     f.box = box
     copyBox = f
   end
-  copyBox.url = questUrl(quest)
-  copyBox.label:SetText(GOLD .. quest.title .. "|r  " .. GREY .. "Ctrl+C to copy, Esc to close|r")
+  copyBox.url = url
+  copyBox.label:SetText(GOLD .. label .. "|r  " .. GREY .. "Ctrl+C to copy, Esc to close|r")
   copyBox:ClearAllPoints()
   copyBox:SetPoint("TOP", panel, "TOP", 0, -40)
   copyBox:Show()
-  copyBox.box:SetText(copyBox.url)
+  copyBox.box:SetText(url)
   copyBox.box:SetCursorPosition(0)
   copyBox.box:SetFocus()
   copyBox.box:HighlightText()
 end
 
-local function buildRow(index)
-  local row = CreateFrame("Button", nil, panel.content)
-  row:SetWidth(ROW_WIDTH)
-  row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+-- Show on Map -------------------------------------------------------------------------------------
 
-  row.bg = row:CreateTexture(nil, "BACKGROUND")
-  row.bg:SetAllPoints()
-  row.bg:SetColorTexture(1, 1, 1, 0.03)
+--- Where the quest starts (or, with turnIn, where it is handed in), for the faction on view.
+--- An NPC position the beta has seen gives an exact spot; prep notes give a zone and sometimes a
+--- spot; quests that start inside, or that we have no place for, fall back to the dungeon's zone.
+local function mapSpotFor(quest, dungeon, turnIn)
+  if turnIn then return quest.turnInAt, false end
+  if quest.startAt then return quest.startAt, false end
+  local inside = quest.inside == "given" or quest.inside == "drop" or quest.spot == "Inside" or quest.spot == "Drops inside"
+  if not inside then
+    local spot
+    if viewSide == "horde" then spot = quest.mapH or quest.mapA else spot = quest.mapA or quest.mapH end
+    if spot then return spot, false end
+  end
+  if dungeon.zone then return { zone = dungeon.zone }, true end
+  return nil
+end
 
-  row.stripe = row:CreateTexture(nil, "BORDER")
-  row.stripe:SetPoint("TOPLEFT", 0, 0)
-  row.stripe:SetPoint("BOTTOMLEFT", 0, 0)
-  row.stripe:SetWidth(3)
+local function openMapAt(id)
+  if not WorldMapFrame then return end
+  if not WorldMapFrame:IsShown() then
+    if type(OpenWorldMap) == "function" then
+      pcall(OpenWorldMap, id)
+    elseif type(ToggleWorldMap) == "function" then
+      pcall(ToggleWorldMap)
+    end
+  end
+  if WorldMapFrame.SetMapID then pcall(WorldMapFrame.SetMapID, WorldMapFrame, id) end
+end
 
-  -- One font string per column, all anchored to the top of the row so they line up as a table.
-  local function column(x, width, font, justify)
-    local text = row:CreateFontString(nil, "ARTWORK", font)
-    text:SetPoint("TOPLEFT", x, -3)
-    text:SetWidth(width)
-    text:SetJustifyH(justify or "LEFT")
-    return text
+local function showOnMap(quest, dungeon, turnIn)
+  local spot, isDungeonZone = mapSpotFor(quest, dungeon, turnIn)
+  if not spot then
+    say(("%s: no map spot in our data yet."):format(quest.title))
+    return
+  end
+  local id = ns.MapIdForZone and ns.MapIdForZone(spot.zone)
+  if not id then
+    say(("%s: %s (that map was not found in this client)."):format(quest.title, spot.zone))
+    return
+  end
+  local who = turnIn and quest.turnIn or quest.from
+  local heading = ("%s: %s"):format(quest.title, turnIn and "hand in" or "pick up")
+  if spot.x then
+    -- Our own pin on the world map always works; TomTom or the game's waypoint add an arrow when present.
+    if ns.SetQuestPin then ns.SetQuestPin(spot, heading, who and (who .. (spot.place and (", " .. spot.place) or "")) or spot.place) end
+    local placed = false
+    if TomTom and TomTom.AddWaypoint and (not ns.Option or ns.Option("routeTomTom", true)) then
+      placed = pcall(TomTom.AddWaypoint, TomTom, id, spot.x / 100, spot.y / 100, { title = heading, persistent = false, minimap = true, world = true })
+    end
+    if not placed and C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates then
+      if pcall(C_Map.SetUserWaypoint, UiMapPoint.CreateFromCoordinates(id, spot.x / 100, spot.y / 100)) and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+        pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
+      end
+    end
+  end
+  openMapAt(id)
+  if spot.x then
+    say(("%s — map pin at %s %.1f, %.1f%s."):format(heading, spot.zone, spot.x, spot.y, who and (" (" .. who .. ")") or ""))
+  elseif isDungeonZone then
+    say(("%s: no pick-up spot in our data, so the map shows the dungeon's zone, %s."):format(quest.title, spot.zone))
+  else
+    say(("%s: starts in %s. Our notes give no exact spot yet, so the map shows the zone."):format(quest.title, spot.zone))
+  end
+end
+
+-- Experience --------------------------------------------------------------------------------------
+
+local function maxLevel()
+  if type(GetMaxPlayerLevel) == "function" then
+    local ok, level = pcall(GetMaxPlayerLevel)
+    if ok and type(level) == "number" then return level end
+  end
+  return nil
+end
+
+--- The XP this character gets for the quest, by the game's own rule: full up to 5 levels above the
+--- quest, then 80%, 60%, 40%, 20% and finally 10%, rounded the way the server rounds; nothing at the
+--- level cap. Returns the amount and whether it is cut.
+local function xpFor(quest)
+  local base = quest.xp
+  if not base then return nil, false end
+  local level = UnitLevel and UnitLevel("player") or nil
+  if not level or not quest.level then return base, false end
+  local cap = maxLevel()
+  if cap and level >= cap then return 0, true end
+  local diff = level - quest.level
+  local multiplier = diff <= 5 and 10 or diff == 6 and 8 or diff == 7 and 6 or diff == 8 and 4 or diff == 9 and 2 or 1
+  if multiplier == 10 then return base, false end
+  local xp = math.floor(base * multiplier / 10)
+  if xp <= 100 then
+    xp = 5 * math.floor((xp + 2) / 5)
+  elseif xp <= 500 then
+    xp = 10 * math.floor((xp + 5) / 10)
+  elseif xp <= 1000 then
+    xp = 25 * math.floor((xp + 12) / 25)
+  else
+    xp = 50 * math.floor((xp + 25) / 50)
+  end
+  return xp, true
+end
+
+-- Drawing helpers ---------------------------------------------------------------------------------
+
+--- A flat fill with a thin edge, so frames look the same on every client without extra art.
+local function paint(frame, fill, edge, size)
+  frame.fill = frame:CreateTexture(nil, "BACKGROUND")
+  frame.fill:SetAllPoints()
+  frame.fill:SetColorTexture(unpack(fill))
+  frame.edges = {}
+  if not edge then return end
+  size = size or 1
+  local function line(a, b, horizontal)
+    local t = frame:CreateTexture(nil, "BORDER")
+    t:SetColorTexture(unpack(edge))
+    t:SetPoint(a)
+    t:SetPoint(b)
+    if horizontal then t:SetHeight(size) else t:SetWidth(size) end
+    frame.edges[#frame.edges + 1] = t
+  end
+  line("TOPLEFT", "TOPRIGHT", true)
+  line("BOTTOMLEFT", "BOTTOMRIGHT", true)
+  line("TOPLEFT", "BOTTOMLEFT")
+  line("TOPRIGHT", "BOTTOMRIGHT")
+end
+
+local function recolour(frame, fill, edge)
+  frame.fill:SetColorTexture(unpack(fill))
+  for _, t in ipairs(frame.edges) do t:SetColorTexture(unpack(edge)) end
+end
+
+--- Parchment runs light to dark from top to bottom where the client can blend; flat otherwise.
+local function parchment(texture)
+  texture:SetColorTexture(1, 1, 1, 1)
+  local ok = texture.SetGradient and CreateColor and pcall(texture.SetGradient, texture, "VERTICAL",
+    CreateColor(unpack(C.parchmentBottom)), CreateColor(unpack(C.parchmentTop)))
+  if not ok then texture:SetColorTexture(unpack(C.parchmentTop)) end
+end
+
+local function fontObject(name) return _G[name] or GameFontNormal end
+
+local function crestOn(texture, side)
+  texture:SetTexture(CREST[side])
+  texture:SetTexCoord(0, 0.625, 0, 0.625)
+end
+
+--- One or two crests for a quest's faction, right-aligned at the anchor.
+local function showCrests(a, b, side, point, relative, relPoint, x, y)
+  a:ClearAllPoints()
+  a:SetPoint(point, relative, relPoint, x, y)
+  if side == "both" then
+    crestOn(a, "horde")
+    crestOn(b, "alliance")
+    b:ClearAllPoints()
+    b:SetPoint("RIGHT", a, "LEFT", 2, 0)
+    a:Show()
+    b:Show()
+  elseif CREST[side] then
+    crestOn(a, side)
+    a:Show()
+    b:Hide()
+  else
+    a:Hide()
+    b:Hide()
+  end
+end
+
+-- Detail page (parchment) -------------------------------------------------------------------------
+
+local function resetDetail()
+  detail.used, detail.y = 0, 0
+  for _, text in ipairs(detail.pool) do text:Hide() end
+  for _, button in ipairs(detail.rewards) do button:Hide() end
+  for _, rule in ipairs(detail.rules) do rule:Hide() end
+  detail.rulesUsed = 0
+  for _, button in pairs(detail.buttons) do button:Hide() end
+  detail.crestA:Hide()
+  detail.crestB:Hide()
+end
+
+local function detailString(font, colour, width)
+  detail.used = detail.used + 1
+  local text = detail.pool[detail.used]
+  if not text then
+    text = detail.content:CreateFontString(nil, "ARTWORK")
+    text:SetJustifyH("LEFT")
+    text:SetJustifyV("TOP")
+    detail.pool[detail.used] = text
+  end
+  text:SetFontObject(fontObject(font))
+  text:SetTextColor(unpack(colour))
+  text:SetShadowOffset(0, 0)
+  text:SetSpacing(2)
+  text:SetWidth(width or detail.width)
+  text:ClearAllPoints()
+  text:Show()
+  return text
+end
+
+--- Puts a region at the running y and moves y past it.
+local function place(region, gap, x)
+  region:ClearAllPoints()
+  region:SetPoint("TOPLEFT", detail.content, "TOPLEFT", x or 0, -detail.y)
+  local height = region.GetStringHeight and region:GetStringHeight() or region:GetHeight()
+  detail.y = detail.y + height + (gap or 0)
+end
+
+local function rule(gap)
+  detail.rulesUsed = detail.rulesUsed + 1
+  local line = detail.rules[detail.rulesUsed]
+  if not line then
+    line = detail.content:CreateTexture(nil, "ARTWORK")
+    line:SetColorTexture(unpack(C.rule))
+    line:SetHeight(1)
+    detail.rules[detail.rulesUsed] = line
+  end
+  line:SetWidth(detail.width)
+  line:Show()
+  place(line, gap or 10)
+end
+
+local function heading(text, font, colour)
+  local h = detailString(font or "GameFontNormal", colour or C.inkHead)
+  h:SetText(text)
+  place(h, 3)
+end
+
+local function body(text, colour, gap)
+  local b = detailString("GameFontHighlight", colour or C.ink)
+  b:SetText(text)
+  place(b, gap or 10)
+end
+
+local function section(title, text)
+  if not text or text == "" then return end
+  heading(title)
+  body(text)
+end
+
+local function itemIcon(item)
+  local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
+  if getIcon then
+    local ok, icon = pcall(getIcon, item.id)
+    if ok and icon then return icon end
+  end
+  if item.icon then return "Interface\\Icons\\" .. item.icon end
+  return "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
+local function qualityColour(q)
+  local colours = ITEM_QUALITY_COLORS
+  local c = colours and colours[q or 1]
+  if c then return c.r, c.g, c.b end
+  return 1, 1, 1
+end
+
+local function rewardButton(index)
+  local button = detail.rewards[index]
+  if button then return button end
+  button = CreateFrame("Button", nil, detail.content)
+  button:SetSize(math.floor((detail.width - 8) / 2), 40)
+  paint(button, { 0.16, 0.11, 0.07, 0.92 }, { 0.3, 0.2, 0.09, 1 })
+  local hl = button:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 0.85, 0.5, 0.12)
+  button.icon = button:CreateTexture(nil, "ARTWORK")
+  button.icon:SetSize(34, 34)
+  button.icon:SetPoint("LEFT", 3, 0)
+  button.name = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  button.name:SetPoint("LEFT", button.icon, "RIGHT", 6, 0)
+  button.name:SetPoint("RIGHT", -4, 0)
+  button.name:SetJustifyH("LEFT")
+  button:SetScript("OnEnter", function(self)
+    if not self.item or not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if not pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. self.item.id) then
+      GameTooltip:SetText(self.item.name)
+    end
+    GameTooltip:Show()
+  end)
+  button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  -- Shift-click links the item in chat, like any reward in the quest log.
+  button:SetScript("OnClick", function(self)
+    if not self.item or not IsShiftKeyDown() then return end
+    local link
+    if type(GetItemInfo) == "function" then
+      local ok, _, itemLink = pcall(GetItemInfo, self.item.id)
+      if ok then link = itemLink end
+    end
+    insertInChat(link or ("[" .. self.item.name .. "]"))
+  end)
+  detail.rewards[index] = button
+  return button
+end
+
+--- Items two to a row, like the quest log's reward grid. Returns the next free button index.
+local function rewardGrid(items, first)
+  local index = first
+  for i, item in ipairs(items) do
+    local button = rewardButton(index)
+    button.item = item
+    button.icon:SetTexture(itemIcon(item))
+    button.name:SetText(item.name)
+    button.name:SetTextColor(qualityColour(item.q))
+    button:ClearAllPoints()
+    local column = (i - 1) % 2
+    button:SetPoint("TOPLEFT", detail.content, "TOPLEFT", column * (button:GetWidth() + 8), -detail.y)
+    button:Show()
+    if column == 1 or i == #items then detail.y = detail.y + 46 end
+    index = index + 1
+  end
+  detail.y = detail.y + 6
+  return index
+end
+
+local function detailButton(key, label, width, onClick)
+  local button = detail.buttons[key]
+  if not button then
+    button = CreateFrame("Button", nil, detail.content, "UIPanelButtonTemplate")
+    button:SetHeight(22)
+    detail.buttons[key] = button
+  end
+  button:SetText(label)
+  button:SetWidth(width)
+  button:SetScript("OnClick", onClick)
+  button:Show()
+  return button
+end
+
+local STATUS_LINE = {
+  active = { "In your quest log", C.inkWarn },
+  turnin = { "Ready to turn in", C.inkGood },
+  done = { "Completed", C.inkSoft },
+}
+
+local function renderQuest(quest, dungeon)
+  resetDetail()
+  local title = detailString("QuestTitleFont", C.inkTitle)
+  title:SetText(quest.title)
+  place(title, 4)
+
+  local levels = ("Available from Level %d"):format(quest.req or quest.level)
+  if quest.level and quest.level ~= quest.req then levels = levels .. ("   ·   Quest level %d"):format(quest.level) end
+  local avail = detailString("GameFontHighlightSmall", C.inkSoft)
+  avail:SetText(levels)
+  place(avail, 8)
+  showCrests(detail.crestB, detail.crestA, quest.side, "LEFT", avail, "LEFT", avail:GetStringWidth() + (quest.side == "both" and 34 or 8), 0)
+  rule(10)
+
+  local status = statusOf(quest)
+  if STATUS_LINE[status] then
+    local line = detailString("GameFontNormal", STATUS_LINE[status][2])
+    line:SetText(STATUS_LINE[status][1])
+    place(line, 10)
   end
 
-  row.title = column(COL_X.quest, COL_QUEST, "GameFontNormalSmall")
-  row.where = column(COL_X.where, COL_WHERE, "GameFontDisableSmall")
-  row.level = column(COL_X.level, COL_LEVEL, "GameFontDisableSmall", "CENTER")
-  row.xp = column(COL_X.xp, COL_XP, "GameFontDisableSmall", "RIGHT")
-  row.share = column(COL_X.share, COL_SHARE, "GameFontDisableSmall", "CENTER")
-  row.badge = column(COL_X.status, COL_STATUS, "GameFontNormalSmall", "RIGHT")
+  -- Objective: the summary, then each thing to kill or collect.
+  local objective = quest.goal or ""
+  if quest.obj and #quest.obj > 0 then
+    local parts = {}
+    -- The summary often repeats the only objective word for word; list it once.
+    for _, entry in ipairs(quest.obj) do
+      if entry ~= quest.goal then parts[#parts + 1] = "- " .. entry end
+    end
+    if #parts > 0 then objective = objective .. (objective ~= "" and "\n" or "") .. table.concat(parts, "\n") end
+  end
+  section("Objective", objective)
 
-  row.tags = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  row.tags:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -2)
-  row.tags:SetJustifyH("LEFT")
-  row.tags:SetWidth(COL_QUEST)
+  -- "Tabitha Heartweaver — Silverpine Forest, The Sepulcher (44.5, 43.0)" when the beta has seen them.
+  local function npcLine(name, spot)
+    if not spot or not spot.x then return name end
+    return ("%s — %s (%.1f, %.1f)"):format(name or "", spot.place or spot.zone, spot.x, spot.y)
+  end
 
-  row.detail = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  row.detail:SetPoint("TOPLEFT", row.tags, "BOTTOMLEFT", 6, -4)
-  row.detail:SetJustifyH("LEFT")
-  row.detail:SetWidth(ROW_WIDTH - 26)
-  row.detail:SetSpacing(2)
+  -- Starts at: the quest giver, then the site's note on where to find them.
+  local starts = {}
+  if quest.item then
+    starts[#starts + 1] = "Loot " .. quest.item .. " inside the dungeon. It starts the quest and cannot be shared."
+  elseif quest.from then
+    starts[#starts + 1] = npcLine(quest.from, quest.startAt)
+  end
+  local where = whereFor(quest)
+  if where and where ~= quest.from then starts[#starts + 1] = where end
+  if #starts == 0 and quest.spot then starts[#starts + 1] = quest.spot end
+  if #starts == 0 then starts[#starts + 1] = "Picked up at the dungeon." end
+  heading("Starts at")
+  body(table.concat(starts, "\n"), nil, 6)
+  -- An exact spot gets a pin; without one the button only opens the zone, and says so.
+  local startSpot = mapSpotFor(quest, dungeon)
+  local mapButton = detailButton("map", startSpot and startSpot.x and "Show on Map" or "Show zone", 120, function() showOnMap(quest, dungeon) end)
+  place(mapButton, 12)
+
+  if quest.turnIn then
+    heading("Turn in")
+    body(npcLine(quest.turnIn, quest.turnInAt), nil, quest.turnInAt and 6 or 10)
+    if quest.turnInAt then
+      local turnInButton = detailButton("turnin", "Show on Map", 120, function() showOnMap(quest, dungeon, true) end)
+      place(turnInButton, 12)
+    end
+  end
+
+  -- Notes: what happens inside, sharing, class and data caveats.
+  local notes = {}
+  if quest.note then notes[#notes + 1] = quest.note end
+  if quest.inside and INSIDE_NOTE[quest.inside] and not quest.note then notes[#notes + 1] = INSIDE_NOTE[quest.inside] end
+  if quest.needs then
+    local unlocked = quest.needsId and isCompleted(quest.needsId)
+    notes[#notes + 1] = unlocked and ("Unlocked: you have done " .. quest.needs .. ".") or ("Needs " .. quest.needs .. " first, so it cannot be shared with players who skipped it.")
+  elseif not quest.item then
+    notes[#notes + 1] = "Can be shared with your group."
+  end
+  if quest.only then notes[#notes + 1] = quest.only .. " only." end
+  if quest.side ~= "both" and MY_SIDE and quest.side ~= MY_SIDE then
+    notes[#notes + 1] = (quest.side == "horde" and "Horde" or "Alliance") .. " quest: your character cannot take it."
+  end
+  if quest.classic then notes[#notes + 1] = "From the Classic quest list; not seen on the Forever beta yet." end
+  section("Notes", table.concat(notes, "\n"))
+
+  -- The questline before this one when it is written in, then the chain the client data knows.
+  local chainLines = {}
+  if quest.pre then
+    local reached = 0
+    local states = {}
+    for index, line in ipairs(quest.pre) do
+      states[index] = statusByName(line:match("^(.-)%s*%(") or line)
+      if states[index] then reached = index end
+    end
+    if quest.needsId and isCompleted(quest.needsId) then reached = #quest.pre + 1 end
+    for index, line in ipairs(quest.pre) do
+      local state = states[index] or (index < reached and "done") or nil
+      local mark = state == "done" and "[x]" or (state == "active" or state == "turnin") and "[~]" or "[  ]"
+      chainLines[#chainLines + 1] = ("%s %s"):format(mark, line)
+    end
+  end
+  local chain = chainOf(quest)
+  if chain then
+    for index, step in ipairs(chain) do
+      local mark, name, suffix = "[  ]", step.name or "?", ""
+      if step.quest then
+        name = step.quest.title
+        if isCompleted(step.quest.id) then
+          mark = "[x]"
+        elseif inLog(step.quest.id) then
+          mark = "[~]"
+        end
+        if step.quest.id == quest.id then suffix = "   < this quest" end
+        if step.dungeon and step.dungeon.slug ~= selectedSlug then suffix = suffix .. "   (" .. step.dungeon.name .. ")" end
+      else
+        suffix = "   (outside this dungeon)"
+      end
+      chainLines[#chainLines + 1] = ("%d. %s %s%s"):format(index, mark, name, suffix)
+    end
+  end
+  if #chainLines > 0 then section(quest.pre and "Before you can take it" or "Quest chain", table.concat(chainLines, "\n")) end
+
+  -- Rewards, in the quest log's order: the choice, the fixed items, then XP, money and reputation.
+  local nextButton = 1
+  if quest.choice and #quest.choice > 0 then
+    heading(#quest.choice > 1 and "Choose one reward" or "You will receive", "QuestTitleFont", C.inkTitle)
+    detail.y = detail.y + 4
+    nextButton = rewardGrid(quest.choice, nextButton)
+  end
+  if quest.items and #quest.items > 0 then
+    heading(quest.choice and "You will also receive" or "You will receive", "QuestTitleFont", C.inkTitle)
+    detail.y = detail.y + 4
+    nextButton = rewardGrid(quest.items, nextButton)
+  end
+  local extras = {}
+  -- XP for this character at its current level; the full amount is shown beside it when it is cut.
+  local xp, cut = xpFor(quest)
+  if xp then
+    if cut and xp == 0 then
+      extras[#extras + 1] = "No XP at the level cap"
+    elseif cut then
+      extras[#extras + 1] = ("%s XP for you (full %s)"):format(groupDigits(xp), groupDigits(quest.xp))
+    else
+      extras[#extras + 1] = groupDigits(xp) .. " XP"
+    end
+  end
+  if quest.money then extras[#extras + 1] = quest.money end
+  if quest.rep then
+    for _, line in ipairs(quest.rep) do extras[#extras + 1] = line end
+  end
+  if #extras > 0 then
+    if not quest.choice and not quest.items then heading("Rewards", "QuestTitleFont", C.inkTitle) end
+    body(table.concat(extras, "   ·   "), C.ink, 2)
+    if quest.xp then
+      local source = (quest.classic or dungeon.classic) and "XP from the Classic quest list." or "XP from the beta client's quest data."
+      body(source .. (" Full until level %d, then less for every level above that."):format(quest.level + 5), C.inkSoft, 10)
+    end
+  end
+
+  rule(10)
+  local chatButton = detailButton("chat", "Link in chat", 120, function() linkInChat(quest) end)
+  local webButton = detailButton("web", "Copy web link", 120, function() showCopyBox(quest.title, questUrl(quest)) end)
+  place(chatButton, 0)
+  webButton:ClearAllPoints()
+  webButton:SetPoint("LEFT", chatButton, "RIGHT", 8, 0)
+  detail.y = detail.y + 8
+  local hint = detailString("GameFontHighlightSmall", C.inkSoft)
+  hint:SetText("Shift-click a reward to link it. Outside your quest log, the chat link is the quest's web address.")
+  place(hint, 10)
+  detail.content:SetHeight(math.max(detail.y, 1))
+end
+
+--- Quests of this dungeon whose goal names the boss.
+local function questsForBoss(dungeon, boss)
+  local names = {}
+  local lower = boss:lower()
+  for _, quest in ipairs(dungeon) do
+    local text = ((quest.goal or "") .. " " .. table.concat(quest.obj or {}, " ")):lower()
+    if text:find(lower, 1, true) then names[#names + 1] = quest.title end
+  end
+  return names
+end
+
+local function renderBoss(dungeon)
+  resetDetail()
+  local bosses = dungeon.bosses or {}
+  local boss = bosses[selectedBoss or 1]
+  if not boss then
+    local title = detailString("QuestTitleFont", C.inkTitle)
+    title:SetText(dungeon.name)
+    place(title, 8)
+    rule(10)
+    body("No boss list for this dungeon yet. The beta has not shown its encounters.", C.ink)
+  else
+    local title = detailString("QuestTitleFont", C.inkTitle)
+    title:SetText(boss)
+    place(title, 4)
+    local sub = detailString("GameFontHighlightSmall", C.inkSoft)
+    sub:SetText(dungeon.bossesFrom == "beta" and "Encounter from the Forever beta client data" or ("Boss %d of %d in the Classic dungeon"):format(selectedBoss or 1, #bosses))
+    place(sub, 8)
+    rule(10)
+    local quests = questsForBoss(dungeon, boss)
+    if #quests > 0 then section("Quests that need this boss", table.concat(quests, "\n")) end
+  end
+  local facts = { ("Level %d-%d"):format(dungeon.min, dungeon.max) }
+  if dungeon.zone then facts[#facts + 1] = "entrance in " .. dungeon.zone end
+  section("Dungeon", table.concat(facts, ", ") .. ".")
+  if dungeon.mobs then section("Enemies inside", "Level " .. dungeon.mobs .. ".") end
+  if dungeon.boss then section("Last boss", dungeon.boss .. ".") end
+  if dungeon.bossesFrom == "classic" then
+    section("About this list", "The main bosses of the Classic version of this dungeon, as a reference. WoW Forever may change them.")
+  elseif dungeon.bossesFrom == "beta" then
+    section("About this list", "Encounter names found in the Forever beta client's data. The order is not confirmed.")
+  end
+  rule(10)
+  local webButton = detailButton("web", "Dungeon guide", 130, function() showCopyBox(dungeon.name, SITE .. "/dungeons/" .. dungeon.slug) end)
+  place(webButton, 10)
+  detail.content:SetHeight(math.max(detail.y, 1))
+end
+
+-- Quest and boss list -----------------------------------------------------------------------------
+
+local function buildRow(index)
+  local row = CreateFrame("Button", nil, panel.listContent)
+  row:SetSize(ROW_WIDTH, ROW_HEIGHT)
+  paint(row, C.row, C.rowEdge)
+  local hl = row:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 0.85, 0.5, 0.08)
+
+  row.icon = row:CreateTexture(nil, "ARTWORK")
+  row.icon:SetSize(22, 22)
+  row.icon:SetPoint("LEFT", 7, 0)
+
+  row.title = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+  row.title:SetPoint("TOPLEFT", 36, -8)
+  row.title:SetWidth(ROW_WIDTH - 36 - 84)
+  row.title:SetJustifyH("LEFT")
+  row.title:SetWordWrap(false)
+
+  row.sub = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  row.sub:SetPoint("TOPLEFT", 36, -26)
+  row.sub:SetWidth(ROW_WIDTH - 36 - 50)
+  row.sub:SetJustifyH("LEFT")
+  row.sub:SetWordWrap(false)
+  row.sub:SetTextColor(0.86, 0.8, 0.68)
+
+  row.tag = row:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+  row.tag:SetPoint("TOPRIGHT", -6, -5)
+  row.tag:SetJustifyH("RIGHT")
+
+  row.crestA = row:CreateTexture(nil, "ARTWORK")
+  row.crestA:SetSize(22, 22)
+  row.crestB = row:CreateTexture(nil, "ARTWORK")
+  row.crestB:SetSize(22, 22)
 
   row:SetScript("OnClick", function(self)
-    if not self.questID then return end
-    if self.quest and IsShiftKeyDown() then return linkInChat(self.quest) end
-    if self.quest and IsControlKeyDown() then return showCopyBox(self.quest) end
-    expandedId = expandedId ~= self.questID and self.questID or nil
+    if self.boss then
+      selectedBoss = self.boss
+    elseif self.quest then
+      if IsShiftKeyDown() then return linkInChat(self.quest) end
+      if IsControlKeyDown() then return showCopyBox(self.quest.title, questUrl(self.quest)) end
+      selectedQuestId = self.quest.id
+    end
+    detail.scroll:SetVerticalScroll(0)
     refresh()
   end)
+  rows[index] = row
   return row
+end
+
+local function layoutRow(row, index)
+  row:ClearAllPoints()
+  row:SetPoint("TOPLEFT", panel.listContent, "TOPLEFT", 0, -(index - 1) * (ROW_HEIGHT + 5))
+  row:Show()
+end
+
+local TAG = {
+  active = GOLD .. "YOU HAVE IT|r",
+  turnin = GREEN .. "TURN IN|r",
+  done = GREY .. "DONE|r",
+}
+
+--- Quests the list shows for the faction on view: open ones first, finished ones at the bottom.
+local function visibleQuests(dungeon)
+  local open, finished = {}, {}
+  for _, quest in ipairs(questsFor(dungeon)) do
+    if quest.side == "both" or quest.side == viewSide then
+      if isCompleted(quest.id) then finished[#finished + 1] = quest else open[#open + 1] = quest end
+    end
+  end
+  for _, quest in ipairs(finished) do open[#open + 1] = quest end
+  return open
+end
+
+local function renderQuestList(dungeon)
+  local list = visibleQuests(dungeon)
+  panel.listTitle:SetText(("Quests  |  %d"):format(#list))
+
+  local picked
+  for _, quest in ipairs(list) do
+    if quest.id == selectedQuestId then picked = quest end
+  end
+  -- Nothing picked yet: the first quest you are on, else the first open one.
+  if not picked then
+    for _, quest in ipairs(list) do
+      if not picked and inLog(quest.id) then picked = quest end
+    end
+    picked = picked or list[1]
+    selectedQuestId = picked and picked.id or nil
+  end
+
+  -- The page is only redrawn when something on it can have changed, so a reward tooltip stays up
+  -- through the once-a-second refresh.
+  local keyParts = { "quests", selectedSlug, viewSide, tostring(selectedQuestId), tostring(UnitLevel and UnitLevel("player")) }
+  for i, quest in ipairs(list) do
+    local row = rows[i] or buildRow(i)
+    row.quest, row.boss = quest, nil
+    local status = statusOf(quest)
+    keyParts[#keyParts + 1] = status
+    row.title:SetText(quest.title)
+    if status == "done" then
+      row.title:SetTextColor(0.6, 0.6, 0.6)
+    else
+      row.title:SetTextColor(1, 0.82, 0)
+    end
+    local sub = ("Available from Level %d"):format(quest.req or quest.level)
+    if quest.step and quest.of and quest.of > 1 then sub = sub .. ("  ·  step %d/%d"):format(quest.step, quest.of) end
+    row.sub:SetText(sub)
+    local tag = TAG[status]
+    if not tag and (quest.pre or (quest.needs and not (quest.needsId and isCompleted(quest.needsId)))) then tag = ORANGE .. "PRE-QUEST|r" end
+    row.tag:SetText(tag or "")
+    row.icon:SetTexture(status == "turnin" and ICON.turnin or status == "done" and ICON.done or ICON.available)
+    row.icon:SetDesaturated(false)
+    row.icon:SetVertexColor(1, 1, 1)
+    if status == "active" then row.icon:SetVertexColor(1, 0.95, 0.6) end
+    showCrests(row.crestA, row.crestB, quest.side, "BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, 4)
+    if quest.id == selectedQuestId then recolour(row, C.picked, C.pickedEdge) else recolour(row, C.row, C.rowEdge) end
+    row:SetAlpha(status == "done" and quest.id ~= selectedQuestId and 0.6 or 1)
+    layoutRow(row, i)
+  end
+  for i = #list + 1, #rows do rows[i]:Hide() end
+  panel.listContent:SetHeight(math.max(#list * (ROW_HEIGHT + 5), 1))
+
+  if #list == 0 then
+    local other = viewSide == "horde" and "Alliance" or "Horde"
+    panel.empty:SetText(("No %s quests in this dungeon.\nClick the %s crest above to see theirs."):format(viewSide == "horde" and "Horde" or "Alliance", other))
+    panel.empty:Show()
+  else
+    panel.empty:Hide()
+  end
+
+  local key = table.concat(keyParts, ":")
+  if key == detail.key then return end
+  detail.key = key
+  if picked then
+    renderQuest(picked, dungeon)
+  else
+    resetDetail()
+    detail.content:SetHeight(1)
+  end
+end
+
+local function renderBossList(dungeon)
+  local bosses = dungeon.bosses or {}
+  panel.listTitle:SetText(("Bosses  |  %d"):format(#bosses))
+  if not selectedBoss or selectedBoss > #bosses then selectedBoss = 1 end
+  for i, boss in ipairs(bosses) do
+    local row = rows[i] or buildRow(i)
+    row.quest, row.boss = nil, i
+    row.title:SetText(boss)
+    row.title:SetTextColor(1, 0.82, 0)
+    row.sub:SetText(dungeon.bossesFrom == "beta" and "Beta encounter" or ("Boss %d"):format(i))
+    row.tag:SetText("")
+    row.icon:SetTexture(ICON.boss)
+    row.icon:SetVertexColor(1, 1, 1)
+    row.crestA:Hide()
+    row.crestB:Hide()
+    if i == selectedBoss then recolour(row, C.picked, C.pickedEdge) else recolour(row, C.row, C.rowEdge) end
+    row:SetAlpha(1)
+    layoutRow(row, i)
+  end
+  for i = #bosses + 1, #rows do rows[i]:Hide() end
+  panel.listContent:SetHeight(math.max(#bosses * (ROW_HEIGHT + 5), 1))
+  if #bosses == 0 then
+    panel.empty:SetText("No boss list for this dungeon yet.")
+    panel.empty:Show()
+  else
+    panel.empty:Hide()
+  end
+  local key = ("bosses:%s:%d"):format(selectedSlug, selectedBoss)
+  if key == detail.key then return end
+  detail.key = key
+  renderBoss(dungeon)
+end
+
+local function updateTabs()
+  local quests = mode == "quests"
+  -- The open tab is the pressed (dark) one, like the mockup's Quests button.
+  if quests then panel.questTab:Disable() else panel.questTab:Enable() end
+  if quests then panel.bossTab:Enable() else panel.bossTab:Disable() end
+  for side, button in pairs(panel.factionButtons) do
+    button:SetShown(quests)
+    local on = side == viewSide
+    recolour(button, on and C.picked or C.pane, on and C.pickedEdge or C.paneEdge)
+    button.crest:SetDesaturated(not on)
+    button.crest:SetAlpha(on and 1 or 0.55)
+  end
 end
 
 refresh = function()
   if not panel or not panel:IsShown() then return end
   local dungeon = dungeonBySlug(selectedSlug)
   if not dungeon then return end
-  if dropdown and UIDropDownMenu_SetText then UIDropDownMenu_SetText(dropdown, dungeon.name) end
 
-  local list = questsFor(dungeon)
-  local done, mine, totalXp, inLogXp, leftXp, inLogCount = 0, 0, 0, 0, 0, 0
-  for _, quest in ipairs(list) do
+  panel.name:SetText(dungeon.name)
+  local line = ("LV %d-%d"):format(dungeon.min, dungeon.max)
+  if dungeon.zone then line = line .. "   |   " .. dungeon.zone end
+  if dungeon.side == "alliance" then
+    line = line .. "   " .. ALLIANCE_BLUE .. "Mostly Alliance|r"
+  elseif dungeon.side == "horde" then
+    line = line .. "   " .. HORDE_RED .. "Mostly Horde|r"
+  end
+  panel.place:SetText(line)
+  -- Dungeons the beta has not shown yet fall back to the Classic quest list, which may differ.
+  panel.source:SetText(dungeon.classic and (ORANGE .. "Classic list, not seen on the beta yet|r") or (GREY .. "Forever beta data|r"))
+
+  -- Progress over the quests your character can take.
+  local done, mine, inLogCount, leftXp = 0, 0, 0, 0
+  for _, quest in ipairs(dungeon) do
     if canTake(quest) then
       mine = mine + 1
-      local xp = quest.xp or 0
-      totalXp = totalXp + xp
       if isCompleted(quest.id) then
         done = done + 1
       else
-        leftXp = leftXp + xp
-        if inLog(quest.id) then
-          inLogCount = inLogCount + 1
-          inLogXp = inLogXp + xp
-        end
+        leftXp = leftXp + (xpFor(quest) or 0)
+        if inLog(quest.id) then inLogCount = inLogCount + 1 end
       end
     end
   end
+  panel.progress:SetText(("%d of %d done  ·  %d in your log  ·  %s XP to earn at your level"):format(done, mine, inLogCount, groupDigits(leftXp)))
 
-  local place = dungeon.zone and (GOLD .. dungeon.zone .. "|r") or ""
-  if dungeon.side == "alliance" then
-    place = place .. "  " .. ALLIANCE_BLUE .. "Mostly Alliance|r"
-  elseif dungeon.side == "horde" then
-    place = place .. "  " .. HORDE_RED .. "Mostly Horde|r"
-  elseif dungeon.side == "both" then
-    place = place .. "  " .. GREY .. "Both factions|r"
-  end
-  panel.title:SetText(dungeon.name)
-  panel.place:SetText(place)
-  local facts = { ("Players %d-%d"):format(dungeon.min, dungeon.max) }
-  if dungeon.mobs then facts[#facts + 1] = "Mobs " .. dungeon.mobs end
-  if dungeon.boss then facts[#facts + 1] = "Top boss " .. dungeon.boss end
-  -- Dungeons the beta has not shown yet fall back to the Classic quest list, which may differ.
-  if dungeon.classic then facts[#facts + 1] = ORANGE .. "Classic list, not seen on the beta yet|r" end
-  panel.facts:SetText(table.concat(facts, "  ·  "))
-  panel.bar:SetMinMaxValues(0, math.max(mine, 1))
-  panel.bar:SetValue(done)
-  if mine > 0 and done == mine then
-    panel.bar:SetStatusBarColor(0.25, 0.8, 0.25)
-    panel.barText:SetText(("All %d quests done"):format(mine))
-  else
-    panel.bar:SetStatusBarColor(0.9, 0.7, 0.1)
-    panel.barText:SetText(("%d of %d quests done  ·  %d in your log"):format(done, mine, inLogCount))
-  end
-  panel.progress:SetText(("%s%s XP*|r in your log  ·  %s XP* still to earn  ·  %s XP* in total"):format(
-    GOLD, groupDigits(inLogXp), groupDigits(leftXp), groupDigits(totalXp)))
-
-  -- Only worth saying "both factions" when the dungeon also has faction-only quests.
-  local factionSplit = false
-  for _, quest in ipairs(list) do
-    if quest.side ~= "both" then factionSplit = true end
-  end
-
-  -- Three blocks: what you still have to do, what you have finished, then the other faction's quests.
-  local todo, finished, other = {}, {}, {}
-  for _, quest in ipairs(list) do
-    if not canTake(quest) then
-      other[#other + 1] = quest
-    elseif isCompleted(quest.id) then
-      finished[#finished + 1] = quest
-    else
-      todo[#todo + 1] = quest
-    end
-  end
-  local ordered = {}
-  for _, quest in ipairs(todo) do
-    -- The questline that opens this one is not in the beta data, so it is written in: list it first.
-    if quest.pre then
-      local steps = {}
-      for index, line in ipairs(quest.pre) do
-        steps[index] = preludeRow(line, index, #quest.pre)
-        steps[index].status = statusByName(steps[index].title)
-      end
-      -- Being on step 3 means steps 1 and 2 are behind you, so mark them done even though the
-      -- quest log no longer mentions them.
-      local reached = 0
-      for index, step in ipairs(steps) do
-        if step.status then reached = index end
-      end
-      if quest.needsId and isCompleted(quest.needsId) then reached = #steps end
-      for index, step in ipairs(steps) do
-        if index < reached and step.status ~= "active" and step.status ~= "turnin" then step.status = "done" end
-        ordered[#ordered + 1] = step
-      end
-    end
-    ordered[#ordered + 1] = quest
-  end
-  -- Counted after the prelude rows are in, so the dividers land in the right place.
-  local firstDone = #ordered + 1
-  for _, quest in ipairs(finished) do ordered[#ordered + 1] = quest end
-  local firstOther = #ordered + 1
-  for _, quest in ipairs(other) do ordered[#ordered + 1] = quest end
-
-  local y = 0
-  for i, quest in ipairs(ordered) do
-    rows[i] = rows[i] or buildRow(i)
-    local row = rows[i]
-    row.questID = quest.id
-    -- Written preludes have no id, so there is nothing to link.
-    row.quest = not quest.prelude and quest or nil
-    if quest.prelude then
-      row.title:ClearAllPoints()
-      row.title:SetPoint("TOPLEFT", COL_X.quest + 18, -3)
-      row.title:SetWidth(COL_QUEST - 18)
-      row.tags:SetWidth(COL_QUEST - 18)
-      local preStatus = quest.status
-      local preColour = preStatus == "done" and GREY or preStatus == "turnin" and GREEN or preStatus == "active" and GOLD or GREY
-      row.title:SetText(ORANGE .. "> |r" .. preColour .. quest.title .. "|r")
-      row.where:SetText(quest.spot and (GREY .. quest.spot .. "|r") or "")
-      row.level:SetText("")
-      row.xp:SetText("")
-      row.share:SetText("")
-      row.badge:SetText(preStatus == "done" and (GREY .. "done|r") or preStatus == "turnin" and (GREEN .. "turn in|r") or preStatus == "active" and (GOLD .. "in log|r") or "")
-      local preLabel = preStatus == "done" and (GREY .. "pre-quest done|r") or (ORANGE .. "pre-quest|r")
-      row.tags:SetText(("%s  %s%d/%d|r"):format(preLabel, GREY, quest.step, quest.of))
-      row.tags:Show()
-      row.detail:SetText("")
-      row.detail:Hide()
-      if preStatus == "done" then
-        row.stripe:SetColorTexture(0.45, 0.45, 0.45, 0.6)
-      elseif preStatus == "active" or preStatus == "turnin" then
-        row.stripe:SetColorTexture(1, 0.82, 0, 0.9)
-      else
-        row.stripe:SetColorTexture(1, 0.5, 0, 0.5)
-      end
-      row.stripe:Show()
-      local height = math.max(row.title:GetStringHeight() + row.tags:GetStringHeight() + 12, 30)
-      row:SetHeight(height)
-      row.bg:SetColorTexture(1, 1, 1, (preStatus == "active" or preStatus == "turnin") and 0.1 or 0.03)
-      row:SetAlpha(0.85)
-      row:ClearAllPoints()
-      row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
-      row:Show()
-      y = y + height + 4
-    else
-    local status, colour, badge = statusOf(quest)
-
-    local indent, arrow = indentOf(quest)
-    row.title:ClearAllPoints()
-    row.title:SetPoint("TOPLEFT", COL_X.quest + indent, -3)
-    row.title:SetWidth(COL_QUEST - indent)
-    row.tags:SetWidth(COL_QUEST - indent)
-    row.title:SetText((QUEST_SIDE_MARK[quest.side] or "") .. arrow .. colour .. quest.title .. "|r")
-    local spotColour = (quest.spot == "Inside" or quest.spot == "Drops inside") and GREEN or (quest.spot == "At the entrance") and GOLD or ""
-    row.where:SetText(quest.spot and (spotColour ~= "" and spotColour .. quest.spot .. "|r" or quest.spot) or GREY .. "—|r")
-    row.level:SetText(GOLD .. (quest.req or quest.level) .. "+|r")
-    row.xp:SetText(quest.xp and (GREY .. groupDigits(quest.xp) .. "|r") or "")
-    if quest.item then
-      row.share:SetText(HORDE_RED .. "item only|r")
-    elseif quest.needs then
-      row.share:SetText(HORDE_RED .. "follow-up|r")
-    else
-      row.share:SetText(GREEN .. "shareable|r")
-    end
-    row.badge:SetText(badge or "")
-
-    -- Tags live on their own line so a long quest name cannot push them off the panel.
-    local tags = {}
-    -- What opens this quest, and whether you have done it: the most useful thing to see at a glance.
-    local opener = quest.needs or (quest.pre and quest.pre[#quest.pre])
-    if opener then
-      local openerDone = quest.needsId and isCompleted(quest.needsId)
-      tags[#tags + 1] = openerDone and (GREEN .. "unlocked by " .. opener .. "|r") or (ORANGE .. "needs first: " .. opener .. "|r")
-    elseif quest.of and quest.of > 1 then
-      tags[#tags + 1] = GREEN .. "starts the chain|r"
-    end
-    if quest.step and quest.of and quest.of > 1 then tags[#tags + 1] = ("%sstep %d/%d|r"):format(GREY, quest.step, quest.of) end
-    if quest.inside then tags[#tags + 1] = INSIDE_TAG[quest.inside == "do" and "do_" or quest.inside] or "" end
-    if quest.only then tags[#tags + 1] = GREY .. quest.only .. " only|r" end
-    -- A quest filled in from the Classic list inside an otherwise beta-backed dungeon.
-    if quest.classic and not dungeon.classic then tags[#tags + 1] = GREY .. "from the Classic list|r" end
-    row.tags:SetText(table.concat(tags, GREY .. "  ·  |r"))
-    if #tags > 0 then
-      row.tags:Show()
-    else
-      row.tags:Hide()
-    end
-    if status == "active" then
-      row.stripe:SetColorTexture(1, 0.82, 0, 0.9)
-      row.stripe:Show()
-    elseif status == "turnin" then
-      row.stripe:SetColorTexture(0.25, 0.82, 0.25, 0.9)
-      row.stripe:Show()
-    elseif status == "done" then
-      row.stripe:SetColorTexture(0.45, 0.45, 0.45, 0.6)
-      row.stripe:Show()
-    elseif quest.needs or quest.pre then
-      row.stripe:SetColorTexture(1, 0.5, 0, 0.75)
-      row.stripe:Show()
-    else
-      row.stripe:Hide()
-    end
-
-    if expandedId == quest.id then
-      row.detail:SetText(detailLines(quest))
-      row.detail:Show()
-    else
-      row.detail:SetText("")
-      row.detail:Hide()
-    end
-
-    local height = row.title:GetStringHeight() + 8
-    if row.tags:IsShown() then height = height + row.tags:GetStringHeight() + 4 end
-    height = math.max(height, 34)
-    if row.detail:IsShown() then height = height + row.detail:GetStringHeight() + 8 end
-    row:SetHeight(height)
-    if i == firstDone and #finished > 0 then
-      panel.doneLine:ClearAllPoints()
-      panel.doneLine:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 8)
-      panel.doneLine:SetPoint("RIGHT", panel.content, "RIGHT", -4, 0)
-      panel.doneLabel:ClearAllPoints()
-      panel.doneLabel:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 14)
-      panel.doneLabel:SetText(("%sDONE|r  %s(%d)|r"):format(GOLD, GREY, #finished))
-      panel.doneLine:Show()
-      panel.doneLabel:Show()
-      y = y + 30
-    end
-    if i == firstOther and #other > 0 then
-      local otherName = MY_SIDE == "horde" and "Alliance only" or "Horde only"
-      panel.otherLine:ClearAllPoints()
-      panel.otherLine:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 8)
-      panel.otherLine:SetPoint("RIGHT", panel.content, "RIGHT", -4, 0)
-      panel.otherLabel:ClearAllPoints()
-      panel.otherLabel:SetPoint("TOPLEFT", panel.content, "TOPLEFT", COL_X.quest, -y - 14)
-      panel.otherLabel:SetText(("%s%s|r  %s(%d) — you cannot take these|r"):format(GOLD, otherName:upper(), GREY, #other))
-      panel.otherLine:Show()
-      panel.otherLabel:Show()
-      y = y + 30
-    end
-    -- Quests you are on stand out like the current stop in the route panel.
-    row.bg:SetColorTexture(1, 1, 1, (status == "active" or status == "turnin") and 0.1 or 0.03)
-    row:SetAlpha(not canTake(quest) and 0.4 or isCompleted(quest.id) and 0.45 or 1)
-    row:ClearAllPoints()
-    row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
-    row:Show()
-    y = y + height + 4
-    end
-  end
-  if #finished == 0 then
-    panel.doneLine:Hide()
-    panel.doneLabel:Hide()
-  end
-  if #other == 0 then
-    panel.otherLine:Hide()
-    panel.otherLabel:Hide()
-  end
-  for i = #ordered + 1, #rows do rows[i]:Hide() end
-  panel.content:SetHeight(math.max(y, 1))
+  updateTabs()
+  if mode == "bosses" then renderBossList(dungeon) else renderQuestList(dungeon) end
 end
 
-local function buildDropdown()
+-- Window ------------------------------------------------------------------------------------------
+
+local function buildDropdown(anchor)
   if not UIDropDownMenu_Initialize then return end
   local ok, frame = pcall(CreateFrame, "Frame", "WoWForeverBuildsQuestDropdown", panel, "UIDropDownMenuTemplate")
   if not ok or not frame then return end
   dropdown = frame
-  dropdown:SetPoint("TOPLEFT", panel, "TOPLEFT", -6, -28)
-  UIDropDownMenu_SetWidth(dropdown, PANEL_WIDTH - 70)
+  dropdown:Hide()
   UIDropDownMenu_Initialize(dropdown, function()
     for _, dungeon in ipairs(ns.dungeons) do
       local info = UIDropDownMenu_CreateInfo()
       info.text = ("%s (%d-%d) %s"):format(dungeon.name, dungeon.min, dungeon.max, SIDE_TAG[dungeon.side or "both"] or "")
       info.checked = dungeon.slug == selectedSlug
       info.func = function()
-        selectedSlug = dungeon.slug
-        expandedId = nil
+        selectDungeon(dungeon.slug)
         CloseDropDownMenus()
         refresh()
       end
       UIDropDownMenu_AddButton(info)
     end
-  end)
+  end, "MENU")
+  anchor:SetScript("OnClick", function(self) ToggleDropDownMenu(1, nil, dropdown, self, 0, 0) end)
 end
 
 local function build()
@@ -813,107 +1238,160 @@ local function build()
     close:SetPoint("TOPRIGHT", -4, -4)
   end
   panel = frame
-  panel:SetSize(PANEL_WIDTH, 580)
+  panel:SetSize(PANEL_WIDTH, PANEL_HEIGHT)
   panel:SetPoint("CENTER")
   panel:SetMovable(true)
+  panel:SetClampedToScreen(true)
   panel:EnableMouse(true)
   panel:RegisterForDrag("LeftButton")
   panel:SetScript("OnDragStart", panel.StartMoving)
   panel:SetScript("OnDragStop", panel.StopMovingOrSizing)
   panel:SetFrameStrata("HIGH")
   panel:Hide()
-  if panel.TitleText then panel.TitleText:SetText("wowforeverbuilds - Dungeon Quest helper") end
+  if panel.TitleText then panel.TitleText:SetText("Dungeon Journal") end
 
-  -- A solid backing so the text does not sit on top of the game world (same look as the route panel).
   local backing = panel:CreateTexture(nil, "BACKGROUND", nil, 1)
   backing:SetPoint("TOPLEFT", 6, -26)
   backing:SetPoint("BOTTOMRIGHT", -6, 6)
-  backing:SetColorTexture(0.05, 0.05, 0.06, 0.92)
+  backing:SetColorTexture(unpack(C.window))
 
-  -- Header: dungeon name with zone and faction beside it, the fight facts, a progress bar, the XP
-  -- totals. Fixed rows, so nothing can overlap.
-  panel.title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
-  panel.title:SetPoint("TOPLEFT", 16, -64)
-  panel.place = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-  panel.place:SetPoint("BOTTOMLEFT", panel.title, "BOTTOMRIGHT", 12, 2)
-  panel.place:SetJustifyH("LEFT")
+  panel.source = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  panel.source:SetPoint("TOPRIGHT", -34, -6)
 
-  panel.facts = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-  panel.facts:SetPoint("TOPLEFT", 16, -92)
-  panel.facts:SetWidth(PANEL_WIDTH - 32)
-  panel.facts:SetJustifyH("LEFT")
+  -- Dungeon picker, top left.
+  local picker = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+  picker:SetSize(118, 22)
+  picker:SetPoint("TOPLEFT", 14, -32)
+  picker:SetText("Dungeons")
+  buildDropdown(picker)
 
-  panel.bar = CreateFrame("StatusBar", nil, panel)
-  panel.bar:SetPoint("TOPLEFT", 16, -112)
-  panel.bar:SetSize(PANEL_WIDTH - 32, 18)
-  panel.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-  local barBg = panel.bar:CreateTexture(nil, "BACKGROUND")
-  barBg:SetAllPoints()
-  barBg:SetColorTexture(1, 1, 1, 0.08)
-  panel.barText = panel.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  panel.barText:SetPoint("CENTER")
+  -- Header card: dungeon name, level and zone; tabs and progress on the right.
+  local card = CreateFrame("Frame", nil, panel)
+  card:SetPoint("TOPLEFT", 12, -60)
+  card:SetPoint("TOPRIGHT", -12, -60)
+  card:SetHeight(64)
+  paint(card, C.card, C.cardEdge)
+  panel.name = card:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
+  panel.name:SetPoint("TOPLEFT", 14, -10)
+  panel.name:SetJustifyH("LEFT")
+  panel.place = card:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  panel.place:SetPoint("TOPLEFT", panel.name, "BOTTOMLEFT", 0, -6)
+  panel.place:SetTextColor(0.86, 0.8, 0.68)
 
-  panel.progress = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-  panel.progress:SetPoint("TOPLEFT", 16, -138)
-  panel.progress:SetWidth(PANEL_WIDTH - 32)
-  panel.progress:SetJustifyH("LEFT")
-
-  local xpNote = panel:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  xpNote:SetPoint("TOPLEFT", 16, -154)
-  xpNote:SetWidth(PANEL_WIDTH - 32)
-  xpNote:SetJustifyH("LEFT")
-  xpNote:SetText(ORANGE .. "*XP is inaccurate:|r it comes from earlier versions of the game. Real WoW Forever values are being collected and will replace it.")
-
-  local hint = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-  hint:SetPoint("TOPLEFT", 16, -176)
-  hint:SetText(GOLD .. "QUESTS|r   " .. GREY .. "click: full chain  ·  shift-click: link in chat (web address if not in your log)  ·  ctrl-click: web link|r")
-
-  local function heading(x, width, label, justify)
-    local text = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    text:SetPoint("TOPLEFT", 14 + x, -196)
-    text:SetWidth(width)
-    text:SetJustifyH(justify or "LEFT")
-    text:SetText(GREY .. label .. "|r")
-    return text
+  panel.questTab = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+  panel.questTab:SetSize(100, 24)
+  panel.questTab:SetPoint("TOPRIGHT", -12, -9)
+  panel.questTab:SetText("Quests")
+  panel.bossTab = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+  panel.bossTab:SetSize(100, 24)
+  panel.bossTab:SetPoint("RIGHT", panel.questTab, "LEFT", -10, 0)
+  panel.bossTab:SetText("Bosses")
+  for _, tab in ipairs({ panel.questTab, panel.bossTab }) do
+    if tab.SetDisabledFontObject then tab:SetDisabledFontObject(GameFontHighlight) end
   end
-  heading(COL_X.quest, COL_QUEST, "Quest")
-  heading(COL_X.where, COL_WHERE, "Pick up at")
-  heading(COL_X.level, COL_LEVEL, "Pick-up lvl", "CENTER")
-  heading(COL_X.xp, COL_XP, "XP*", "RIGHT")
-  heading(COL_X.share, COL_SHARE, "Sharing", "CENTER")
-  heading(COL_X.status, COL_STATUS, "Status", "RIGHT")
+  panel.questTab:SetScript("OnClick", function()
+    mode = "quests"
+    detail.scroll:SetVerticalScroll(0)
+    refresh()
+  end)
+  panel.bossTab:SetScript("OnClick", function()
+    mode = "bosses"
+    detail.scroll:SetVerticalScroll(0)
+    refresh()
+  end)
+  panel.progress = card:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  panel.progress:SetPoint("BOTTOMRIGHT", -12, 9)
+  panel.progress:SetJustifyH("RIGHT")
 
-  local rule = panel:CreateTexture(nil, "ARTWORK")
-  rule:SetColorTexture(1, 1, 1, 0.08)
-  rule:SetPoint("TOPLEFT", 14, -210)
-  rule:SetPoint("TOPRIGHT", -30, -210)
-  rule:SetHeight(1)
+  -- Left pane: the list.
+  local left = CreateFrame("Frame", nil, panel)
+  left:SetPoint("TOPLEFT", 12, BODY_TOP)
+  left:SetPoint("BOTTOMLEFT", 12, 12)
+  left:SetWidth(LIST_WIDTH)
+  paint(left, C.pane, C.paneEdge)
+  panel.listTitle = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
+  panel.listTitle:SetPoint("TOPLEFT", 12, -14)
+  panel.listTitle:SetTextColor(0.95, 0.9, 0.8)
 
-  local scroll = CreateFrame("ScrollFrame", "WoWForeverBuildsQuestScroll", panel, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 14, -216)
-  scroll:SetPoint("BOTTOMRIGHT", -32, 14)
-  panel.content = CreateFrame("Frame", nil, scroll)
-  panel.content:SetSize(ROW_WIDTH, 1)
-  scroll:SetScrollChild(panel.content)
+  -- Faction crests: which side's quests the list shows. Yours is picked when the window opens.
+  panel.factionButtons = {}
+  local previous
+  for _, side in ipairs({ "horde", "alliance" }) do
+    local button = CreateFrame("Button", nil, left)
+    button:SetSize(34, 34)
+    if previous then
+      button:SetPoint("RIGHT", previous, "LEFT", -6, 0)
+    else
+      button:SetPoint("TOPRIGHT", -8, -6)
+    end
+    paint(button, C.pane, C.paneEdge)
+    button.crest = button:CreateTexture(nil, "ARTWORK")
+    button.crest:SetSize(28, 28)
+    button.crest:SetPoint("CENTER", 3, -3)
+    crestOn(button.crest, side)
+    button:SetScript("OnClick", function()
+      viewSide = side
+      selectedQuestId = nil
+      detail.scroll:SetVerticalScroll(0)
+      refresh()
+    end)
+    button:SetScript("OnEnter", function(self)
+      if not GameTooltip then return end
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText(side == "horde" and "Horde quests" or "Alliance quests")
+      GameTooltip:AddLine("Quests both factions can take are always listed.", 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    panel.factionButtons[side] = button
+    previous = button
+  end
 
-  panel.doneLine = panel.content:CreateTexture(nil, "ARTWORK")
-  panel.doneLine:SetColorTexture(1, 1, 1, 0.08)
-  panel.doneLine:SetHeight(1)
-  panel.doneLine:Hide()
-  panel.doneLabel = panel.content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  panel.doneLabel:SetJustifyH("LEFT")
-  panel.doneLabel:Hide()
+  local listScroll = CreateFrame("ScrollFrame", "WoWForeverBuildsJournalList", left, "UIPanelScrollFrameTemplate")
+  listScroll:SetPoint("TOPLEFT", 8, -48)
+  listScroll:SetPoint("BOTTOMRIGHT", -30, 8)
+  panel.listContent = CreateFrame("Frame", nil, listScroll)
+  panel.listContent:SetSize(ROW_WIDTH, 1)
+  listScroll:SetScrollChild(panel.listContent)
+  panel.empty = left:CreateFontString(nil, "ARTWORK", "GameFontDisable")
+  panel.empty:SetPoint("TOP", 0, -70)
+  panel.empty:SetWidth(LIST_WIDTH - 40)
+  panel.empty:Hide()
 
-  panel.otherLine = panel.content:CreateTexture(nil, "ARTWORK")
-  panel.otherLine:SetColorTexture(1, 1, 1, 0.08)
-  panel.otherLine:SetHeight(1)
-  panel.otherLine:Hide()
-  panel.otherLabel = panel.content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  panel.otherLabel:SetJustifyH("LEFT")
-  panel.otherLabel:Hide()
+  -- Right pane: the parchment page.
+  local right = CreateFrame("Frame", nil, panel)
+  right:SetPoint("TOPLEFT", left, "TOPRIGHT", 10, 0)
+  right:SetPoint("BOTTOMRIGHT", -12, 12)
+  paint(right, C.parchmentTop, C.parchmentEdge, 3)
+  parchment(right.fill)
+  local detailScroll = CreateFrame("ScrollFrame", "WoWForeverBuildsJournalPage", right, "UIPanelScrollFrameTemplate")
+  detailScroll:SetPoint("TOPLEFT", 16, -14)
+  detailScroll:SetPoint("BOTTOMRIGHT", -32, 12)
+  local pageWidth = PANEL_WIDTH - 24 - LIST_WIDTH - 10 - 16 - 32
+  detail = {
+    scroll = detailScroll,
+    content = CreateFrame("Frame", nil, detailScroll),
+    width = pageWidth - 4,
+    pool = {},
+    rewards = {},
+    rules = {},
+    buttons = {},
+    used = 0,
+    rulesUsed = 0,
+    y = 0,
+  }
+  detail.content:SetSize(pageWidth, 1)
+  detailScroll:SetScrollChild(detail.content)
+  detail.crestA = detail.content:CreateTexture(nil, "ARTWORK")
+  detail.crestA:SetSize(24, 24)
+  detail.crestB = detail.content:CreateTexture(nil, "ARTWORK")
+  detail.crestB:SetSize(24, 24)
 
-  rows = {}
-  buildDropdown()
+  -- The world map opens over the journal when Show on Map is used, then the journal comes back on top.
+  if WorldMapFrame and WorldMapFrame.HookScript then
+    WorldMapFrame:HookScript("OnShow", function() panel:SetFrameStrata("MEDIUM") end)
+    WorldMapFrame:HookScript("OnHide", function() panel:SetFrameStrata("HIGH") end)
+  end
 
   panel:SetScript("OnShow", function()
     if not selectedSlug then selectedSlug = defaultSlug() end
@@ -955,7 +1433,7 @@ function ns.ToggleQuestPanel()
     return
   end
   ns.questPanelDismissed = nil
-  selectedSlug = defaultSlug() or selectedSlug
+  selectDungeon(defaultSlug() or selectedSlug)
   -- Opened without the group finder (chat, minimap, options): stays open until you close it.
   panel.openedByHand = not anchorToFinder()
   panel:Show()
@@ -966,7 +1444,7 @@ local function onFinderShown()
   -- Closing the panel yourself keeps it closed until you ask for it again with /wfb quests.
   if ns.questPanelDismissed then return end
   if ns.Option and not ns.Option("questAutoOpen", true) then return end
-  selectedSlug = defaultSlug() or selectedSlug
+  selectDungeon(defaultSlug() or selectedSlug)
   anchorToFinder()
   panel:Show()
 end
@@ -1010,10 +1488,10 @@ local announced = false
 local function updateToggleButton()
   if toggleButton and toggleButton:IsShown() and not announced then
     announced = true
-    DEFAULT_CHAT_FRAME:AddMessage("|cffd4a84bWoW Forever Builds|r Dungeon Quest helper: use the |cffffffffQuest helper|r button on the group finder, or type |cffffffff/wfb quests|r.")
+    say("Dungeon Journal: use the |cffffffffDungeon Journal|r button on the group finder, or type |cffffffff/wfb quests|r.")
   end
   if not toggleButton or not toggleButton:IsShown() then return end
-  toggleButton:SetText(panel and panel:IsShown() and "Hide helper" or "Quest helper")
+  toggleButton:SetText(panel and panel:IsShown() and "Hide journal" or "Dungeon Journal")
 end
 
 -- Watching beats hooking here: the finder hides and shows its inner frames when you change tabs, so a
@@ -1064,10 +1542,7 @@ driver:SetScript("OnEvent", function(_, event)
   if event == "LFG_UPDATE" or event == "LFG_QUEUE_STATUS_UPDATE" or event == "LFG_PROPOSAL_SHOW" or event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
     -- Queue for a dungeon, or walk into one, and the panel follows it.
     local target = matchDungeon(currentInstance()) or matchDungeon(selectedInFinder())
-    if target and target ~= selectedSlug then
-      selectedSlug = target
-      expandedId = nil
-    end
+    if target then selectDungeon(target) end
     if panel and panel:IsShown() then refresh() end
   else
     refresh()

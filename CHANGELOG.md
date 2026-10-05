@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0
+
+- The Dungeon Quest helper is now the **Dungeon Journal**: a two-page window with the dungeon's quests on the left and the picked quest on a parchment page on the right, laid out like the quest log.
+- The quest page shows the objective, where it starts with a **Show on Map** button (a map pin when our notes give coordinates, otherwise the zone), who takes it, notes on sharing, the chain before it, and the rewards with item icons, tooltips and shift-click links.
+- Alliance and Horde crests at the top of the list switch whose quests are shown; quests both factions can take are always listed.
+- New **Bosses** tab: the dungeon's bosses (the Classic list, or the encounter names from the beta client for new dungeons) and the quests that need each one.
+- **XP for your character**: the reward and the "to earn" total now use your level, by the game's rule (full XP up to 5 levels above the quest, then 80%, 60%, 40%, 20%, 10%; none at the level cap). The "XP is inaccurate" note is gone: the base XP comes from the beta client's quest data.
+- **Show on Map** now puts a quest pin on the world map (hover for who and where, right click to remove), plus a TomTom arrow when TomTom is installed. Quest givers the beta has been seen with have exact spots; the turn-in NPC gets its own button. Quests without a known spot show **Show zone** and only open the zone.
+- Quest data refreshed to beta quest cache build 70170: 37 more quests, including Scarlet Monastery, Razorfen Kraul, City of Dalaran and the Excavation Site.
+
 ## 1.5.2
 
 - Fixed: shift-clicking a quest in the Dungeon Quest helper sent plain white text. Quests in your log now go out as a real quest link; the server does not allow links to other quests, so those send the quest name and its wowforeverbuilds.com address instead.

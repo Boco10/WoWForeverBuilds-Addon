@@ -89,6 +89,12 @@ local function mapIdOf(step)
   return nil
 end
 
+--- The uiMapID for a zone name; the quest journal's Show on Map button uses it too.
+function ns.MapIdForZone(zone)
+  if not zone then return nil end
+  return mapIdOf({ zone = zone })
+end
+
 --- Where the player stands on the stop's map, in map percent, or nil when on another map.
 local function playerAt(step)
   if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then return nil end
@@ -738,11 +744,73 @@ local function hidePins(from)
   for i = from or 1, #pins do pins[i]:Hide() end
 end
 
+-- One pin for the Dungeon Journal's Show on Map: where a quest starts or is handed in.
+local questPin, questPinFrame
+local questPinSerial = 0
+
+--- spot = { zone, x, y }; heading and text fill the tooltip. nil takes the pin away.
+function ns.SetQuestPin(spot, heading, text)
+  questPin = spot and spot.x and { zone = spot.zone, x = spot.x, y = spot.y, heading = heading, text = text } or nil
+  questPinSerial = questPinSerial + 1
+end
+
+local function drawQuestPin(canvas, shown)
+  if not questPin or not canvas or not shown then
+    if questPinFrame then questPinFrame:Hide() end
+    return
+  end
+  local x, y = stopOnMap(questPin, shown)
+  if not x or x < 0 or x > 1 or y < 0 or y > 1 then
+    if questPinFrame then questPinFrame:Hide() end
+    return
+  end
+  if not questPinFrame then
+    local pin = CreateFrame("Button", nil, canvas)
+    pin:SetSize(30, 30)
+    pin.glow = pin:CreateTexture(nil, "BORDER")
+    pin.glow:SetAllPoints()
+    pin.glow:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+    pin.glow:SetVertexColor(0, 0, 0, 0.75)
+    pin.icon = pin:CreateTexture(nil, "ARTWORK")
+    pin.icon:SetPoint("TOPLEFT", 3, -3)
+    pin.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+    pin.icon:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
+    pin:RegisterForClicks("RightButtonUp")
+    pin:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:AddLine(questPin and questPin.heading or "", 1, 0.82, 0)
+      if questPin then GameTooltip:AddLine(("%s %.1f, %.1f"):format(questPin.zone, questPin.x, questPin.y), 0.6, 0.6, 0.6) end
+      if questPin and questPin.text then GameTooltip:AddLine(questPin.text, 1, 1, 1, true) end
+      GameTooltip:AddLine("Right click: remove the pin", 0.25, 0.85, 0.25)
+      GameTooltip:Show()
+    end)
+    pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    pin:SetScript("OnClick", function()
+      GameTooltip:Hide()
+      ns.SetQuestPin(nil)
+    end)
+    questPinFrame = pin
+  end
+  local width, height = canvas:GetWidth(), canvas:GetHeight()
+  local scale = WorldMapFrame.ScrollContainer and WorldMapFrame.ScrollContainer.GetCanvasScale and WorldMapFrame.ScrollContainer:GetCanvasScale() or 1
+  questPinFrame:SetParent(canvas)
+  questPinFrame:SetFrameStrata(canvas:GetFrameStrata())
+  questPinFrame:SetFrameLevel(canvas:GetFrameLevel() + 2100)
+  questPinFrame:SetScale(1 / math.max(scale, 0.01))
+  questPinFrame:ClearAllPoints()
+  questPinFrame:SetPoint("CENTER", canvas, "TOPLEFT", x * width * scale, -y * height * scale)
+  questPinFrame:Show()
+end
+
 local function drawPins()
   local canvas = mapCanvas()
   local route = mapRoute()
   local shown = shownMapId()
-  if not canvas or not route or not shown or not WorldMapFrame:IsShown() then return hidePins() end
+  local visible = WorldMapFrame and WorldMapFrame:IsShown()
+  drawQuestPin(visible and canvas, shown)
+  -- The options panel can take the route pins off the map; the quest pin stays.
+  if ns.Option and not ns.Option("routeMap", true) then return hidePins() end
+  if not canvas or not route or not shown or not visible then return hidePins() end
   local stops = stopsOf(route)
   local index = activeRoute() and currentIndex(route) or 0
   local width, height = canvas:GetWidth(), canvas:GetHeight()
@@ -871,10 +939,11 @@ mapWatcher:SetScript("OnUpdate", function(_, elapsed)
   if mapButton then
     if onMap then mapButton:Show() else mapButton:Hide() end
   end
-  if not WorldMapFrame:IsShown() or not onMap then
+  if not WorldMapFrame:IsShown() then
     if pinSignature then
       pinSignature = nil
       hidePins()
+      if questPinFrame then questPinFrame:Hide() end
     end
     return
   end
@@ -883,7 +952,7 @@ mapWatcher:SetScript("OnUpdate", function(_, elapsed)
   local scale = WorldMapFrame.ScrollContainer and WorldMapFrame.ScrollContainer.GetCanvasScale and WorldMapFrame.ScrollContainer:GetCanvasScale() or 1
   local signature = table.concat({
     tostring(shownMapId()), route and route.slug or "-", route and currentIndex(route) or 0, tostring(activeRoute() ~= nil),
-    canvas and math.floor(canvas:GetWidth()) or 0, math.floor(scale * 1000),
+    canvas and math.floor(canvas:GetWidth()) or 0, math.floor(scale * 1000), questPinSerial, tostring(onMap),
   }, ":")
   if signature ~= pinSignature then
     pinSignature = signature

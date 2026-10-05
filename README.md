@@ -15,17 +15,15 @@ Nothing is sent anywhere. The addon reads your own character and the quest log, 
 
 `/wfb guide list` lists the guides for your class, `/wfb guide 3` picks one, `/wfb guide off` turns it off.
 
-### Dungeon Quest helper beside the group finder
-Open the group finder and the **wowforeverbuilds - Dungeon Quest helper** panel opens next to it, with a **Quest helper** button above the window to show and hide it.
+### Dungeon Journal beside the group finder
+Open the group finder and the **Dungeon Journal** opens next to it, with a **Dungeon Journal** button above the window to show and hide it.
 
-- Follows what you do: queue for a dungeon, tick one in the finder or walk into one, and the panel switches to it.
-- Columns for the quest, where you pick it up, the level you can pick it up at, its experience reward, whether it can be shared, and your progress.
-- Quests are grouped: what you still have to do, what you have finished, and the other faction's quests.
-- Each quest is marked `[A]`, `[H]` or `[A/H]`, and quests that cannot be shared say why: an item starts them, or they follow another quest.
-- Steps that happen inside the dungeon are marked: given inside, drops inside, hand in inside, do inside, or at the entrance.
-- Click a quest for the whole chain: where to pick it up, what it asks for, who takes it, and every step with your progress.
+- Follows what you do: queue for a dungeon, tick one in the finder or walk into one, and the journal switches to it. The **Dungeons** button picks any other.
+- The quest list on the left shows the level you can pick each quest up at, its faction crest, and **YOU HAVE IT**, **TURN IN**, **DONE** or **PRE-QUEST**. The Alliance and Horde crests at the top switch whose quests are listed.
+- Click a quest and the right page reads like the quest log: objective, where it starts (with a **Show on Map** button that puts a pin on the world map), who takes it, notes on sharing and what happens inside, the chain before it, and the rewards with their icons and tooltips.
+- A **Bosses** tab lists the dungeon's bosses with the quests that need each one.
 - Questlines that open a dungeon chain are listed above it, and your quest log marks those quests with `[D]` or `[D>]`.
-- Running totals: what the quests in your log are worth, what the dungeon still owes you, and the full total. Experience figures come from earlier versions of the game and are marked as estimates until real WoW Forever values are collected.
+- XP for your character: the reward and the dungeon total use your level, by the game's rule (full XP up to 5 levels above the quest, then 80%, 60%, 40%, 20%, 10%). Base figures come from the beta client's quest data.
 
 `/wfb quests` opens the panel from chat.
 
@@ -39,7 +37,7 @@ Open the group finder and the **wowforeverbuilds - Dungeon Quest helper** panel 
 - **On the world map:** a **Routes** button in the corner picks a route, and its stops show as numbered pins (green = current, gold = still to do, grey = done) on the zone map and on the continent. Hover a pin for what to do there; click it to make it your current stop.
 
 ### Minimap icon
-Left click opens the route guides; right click opens a menu with the routes, the Dungeon Quest helper, a tick to turn the talent guide on or off, the talent window and the character export. Drag it around the minimap. `/wfb minimap` hides or shows it.
+Left click opens the route guides; right click opens a menu with the routes, the Dungeon Journal, a tick to turn the talent guide on or off, the talent window and the character export. Drag it around the minimap. `/wfb minimap` hides or shows it.
 
 The first route is the **Cozy Sleeping Bag** (up to 3% more experience while you rest in it). More routes are added in updates as they are found: hidden quest chains, collectibles and other errands worth the trip. `/wfb route list` lists the routes, `/wfb route next` / `/wfb route back` move between stops, `/wfb route stop` clears the waypoint.
 
