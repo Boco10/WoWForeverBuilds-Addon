@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0
+
+- Talent guides follow the final beta talent trees (client 1.60.1.70532). Talents that were removed or moved have been replaced with the closest talent still in the tree, so 95 of the 140 built-in orders changed.
+- The nine class leveling guides now run from level 10 to 60 with all 51 points. Levels 31-60 are projected from the final beta client and have not been played yet.
+- Dungeon Journal quest data refreshed to quest cache build 70338: 159 Forever quests, 4 of them new. Quests whose XP the source no longer lists show no XP instead of an old value.
+
+## 1.6.1
+
+- Cozy Sleeping Bag route: the Stonewrought Dam stop now names the chain's quests (Wet Bags, then Eagle's Fist) and warns about the missing-quest bug, the Horde route flags the two guarded stretches into Loch Modan, and the notes cover the layer-change bug that leaves the bag behind with its cooldown still running, plus the chain's 12-slot bag and Student Fodder.
+
 ## 1.6.0
 
 - The Dungeon Quest helper is now the **Dungeon Journal**: a two-page window with the dungeon's quests on the left and the picked quest on a parchment page on the right, laid out like the quest log.

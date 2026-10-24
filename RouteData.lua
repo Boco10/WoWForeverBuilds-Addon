@@ -10,14 +10,17 @@ local SLEEPING_BAG_ABOUT = {
   "Lay the bag down and rest in it: every minute inside adds 1% experience, stacking to 3%.",
   "Stacks with the 5% from cooked food and counts for quest experience too.",
   "One hour cooldown. You lose the buff if you die, so mind it before a dungeon.",
+  "Do not place it just before a layer change: if you get phased, the bag stays behind and the cooldown keeps running.",
+  "The chain also hands out a 12-slot bag and Student Fodder. One tester reported on 4 October that the bag is nerfed, and another could not use the fodder at level 23.",
   "Best done around level 20: it is a long run across both continents, and it pays off for the rest of the climb to 60.",
 }
 -- Shown as copyable text boxes in the panel.
 local SLEEPING_BAG_LINKS = {
   { label = "Video by Zen (OSWguild) — the route this guide follows", url = "https://www.youtube.com/watch?v=t3FClbeBIOc" },
-  { label = "Our write-up on wowforeverbuilds.com", url = "https://wowforeverbuilds.com/news/the-cozy-sleeping-bag-route-in-wow-forever-five-zones-a-jumping-puzzle-and-a-3-x" },
+  { label = "Our write-up on wowforeverbuilds.com", url = "https://wowforeverbuilds.com/secrets/cozy-sleeping-bag" },
+  { label = "Forum thread: the bag is left behind when you are phased", url = "https://us.forums.blizzard.com/en/wow/t/2372181" },
 }
-local SLEEPING_BAG_UNCONFIRMED = "Beta route from one tester's video. We have not run it ourselves, and beta content can change before launch."
+local SLEEPING_BAG_UNCONFIRMED = "Beta route from one tester's video, with later notes from beta forum threads. We have not run it ourselves, and beta content can change before launch."
 
 local STONETALON = "Follow the narrow path up the mountain to an abandoned camp and take the quest there: it gives you the tools to relight the campfire. Then, over the small hill, run and jump along the path to the dirt mound for the next quest (it also hands out a ranged weapon and ammo if your class can use them)."
 local HILLSBRAD = "Go to the wall between Hillsbrad and the Arathi Highlands and stay on the Hillsbrad side. Climb the small jumping puzzle (press jump first, then move forward). At the top a small bag hangs on the wall: click it for the Cozy Sleeping Bag."
@@ -29,7 +32,7 @@ ns.routes = {
     name = "Cozy Sleeping Bag",
     level = 20,
     item = "Cozy Sleeping Bag",
-    reward = "Cozy Sleeping Bag: +1% experience for each minute you rest in it, up to 3%",
+    reward = "Cozy Sleeping Bag: +1% experience for each minute you rest in it, up to 3%. The chain also gives a 12-slot bag and Student Fodder",
     about = SLEEPING_BAG_ABOUT,
     links = SLEEPING_BAG_LINKS,
     unconfirmed = SLEEPING_BAG_UNCONFIRMED,
@@ -52,7 +55,7 @@ ns.routes = {
       {
         zone = "Loch Modan", map = 1432, x = 49.4, y = 12.9,
         title = "Stonewrought Dam",
-        text = "Do not jump straight off the dam. There is one spot to drop down onto, and it is easy to overshoot: drop carefully, then take the quest below.",
+        text = "Wet Bags is turned in on top of the dam, and Eagle's Fist follows it. Do not jump straight off: there is one spot to drop down onto, and it is easy to overshoot. Drop carefully, then take the quest below. If Eagle's Fist does not appear in your log after the turn-in, you have hit a bug testers reported on 25 September.",
       },
       {
         zone = "Hillsbrad Foothills", map = 1424, x = 87.3, y = 49.6,
@@ -67,7 +70,7 @@ ns.routes = {
     name = "Cozy Sleeping Bag",
     level = 20,
     item = "Cozy Sleeping Bag",
-    reward = "Cozy Sleeping Bag: +1% experience for each minute you rest in it, up to 3%",
+    reward = "Cozy Sleeping Bag: +1% experience for each minute you rest in it, up to 3%. The chain also gives a 12-slot bag and Student Fodder",
     about = SLEEPING_BAG_ABOUT,
     links = SLEEPING_BAG_LINKS,
     unconfirmed = SLEEPING_BAG_UNCONFIRMED,
@@ -90,7 +93,7 @@ ns.routes = {
       {
         zone = "Loch Modan", map = 1432, x = 49.4, y = 12.9,
         title = "Stonewrought Dam",
-        text = "Deep in Alliance ground, so expect guards on the way in. Do not jump straight off the dam: there is one spot to drop down onto, and it is easy to overshoot. Drop carefully, then take the quest below.",
+        text = "The hard leg for Horde: the tunnel into Loch Modan and the dam area are both guarded, and you will be attacked going through each. Ride it as a run, not a walk. Wet Bags is turned in on top of the dam, and Eagle's Fist follows it. Do not jump straight off: there is one spot to drop down onto, and it is easy to overshoot. If Eagle's Fist does not appear in your log, you have hit a bug testers reported on 25 September.",
       },
       {
         zone = "Hillsbrad Foothills", map = 1424, x = 87.3, y = 49.6,
