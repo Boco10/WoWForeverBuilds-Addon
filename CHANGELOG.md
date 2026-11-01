@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1
+
+- Talent guides follow the live launch client (1.60.1.70707) and its server hotfixes. Those hotfixes rework the Paladin and Druid trees and retune Mage, Priest and Hunter talents. Every affected built-in order has been refitted, including all Paladin and Mage endgame guides.
+- Dungeon Journal: Upper Blackrock Spire has its own page, with the Classic quest list by faction. The quest-giver notes are filled in for Dalaran, the Drowned City, Razorfen Downs, Uldaman, the Scarlet Monastery wings and Blackrock Depths. Three quests whose XP the client no longer lists show no XP.
+
 ## 1.7.0
 
 - Talent guides follow the final beta talent trees (client 1.60.1.70532). Talents that were removed or moved have been replaced with the closest talent still in the tree, so 95 of the 140 built-in orders changed.
