@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.2
+
+- Paladin, Druid, Mage, Holy and Discipline Priest and Beast Mastery Hunter guides are re-planned around the live talents instead of only patched to stay legal: Shieldsworn for Protection, Oath of Light for Holy, Unsealed Wrath and Champion of the Light for Retribution, Lacerate for bears, Bloom for Restoration, Arcane Wrath and Precision for Mage, Holy Binding for group Priests.
+- Duo guides no longer say Paladins are Alliance-only or Shamans Horde-only.
+
 ## 1.7.1
 
 - Talent guides follow the live launch client (1.60.1.70707) and its server hotfixes. Those hotfixes rework the Paladin and Druid trees and retune Mage, Priest and Hunter talents. Every affected built-in order has been refitted, including all Paladin and Mage endgame guides.
