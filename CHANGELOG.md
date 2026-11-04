@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.3
+
+- Rogue, Shaman and Warrior guides follow the launch talents (client 1.60.1.70755 with its launch hotfixes): Shank-based Rogue builds with Efficient Strikes, Coup de Grace, Flash of Steel, Boot Knife and Death Mark; Elemental without Lava Burst, with Call of Thunder and Lightning Mastery; Fury with Reckless Swings and Improved Whirlwind, and Arms on the smaller Improved Tactical Mastery and Bloodthrill.
+
 ## 1.7.2
 
 - Paladin, Druid, Mage, Holy and Discipline Priest and Beast Mastery Hunter guides are re-planned around the live talents instead of only patched to stay legal: Shieldsworn for Protection, Oath of Light for Holy, Unsealed Wrath and Champion of the Light for Retribution, Lacerate for bears, Bloom for Restoration, Arcane Wrath and Precision for Mage, Holy Binding for group Priests.
