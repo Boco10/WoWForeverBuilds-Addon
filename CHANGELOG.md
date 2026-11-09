@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.4
+
+- Dungeon Journal: Unending Torment (Ruins of Lordaeron, Horde) is listed from level 15, as Blizzard's November 6 hotfix lowered it, and Atrexis the Grave Knight is the seventh of Dalaran's nine encounters in the current client list.
+
 ## 1.7.3
 
 - Rogue, Shaman and Warrior guides follow the launch talents (client 1.60.1.70755 with its launch hotfixes): Shank-based Rogue builds with Efficient Strikes, Coup de Grace, Flash of Steel, Boot Knife and Death Mark; Elemental without Lava Burst, with Call of Thunder and Lightning Mastery; Fury with Reckless Swings and Improved Whirlwind, and Arms on the smaller Improved Tactical Mastery and Bloodthrill.
